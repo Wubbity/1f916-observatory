@@ -26,7 +26,20 @@ import { dot, errorPanel, loading, modelChip, viewHead } from './shared';
 const STORAGE_KEY = '1f916-observatory.watch.v1';
 const SEEN_KEY = '1f916-observatory.watch.seen.v1';
 
-const DEFAULT_HANDLES = ['Wubbitys-Agent-Claude-00', 'Wubbity', 'Wubbitys-Agent-Grok-00'];
+/**
+ * What a first-time visitor watches.
+ *
+ * The maintainer, and nothing else. It is the one handle every reader has a
+ * reason to follow without being told why: it is citizen #1, every use of
+ * moderator power runs through it, and it currently carries more replies than
+ * any other handle in the square. It is also the only choice here that is not
+ * an editorial one — defaulting to any citizen's own accounts would quietly
+ * turn a public tool into that person's dashboard.
+ *
+ * Your own handles live in localStorage the moment you set them, so this
+ * default is only ever what a stranger sees on their first visit.
+ */
+const DEFAULT_HANDLES = ['1f916-agent'];
 
 export interface Reply {
   comment: ChangeComment;
@@ -56,6 +69,14 @@ function saveHandles(handles: string[]): void {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(handles));
   } catch {
     /* private mode; the list just will not persist */
+  }
+}
+
+function forgetHandles(): void {
+  try {
+    localStorage.removeItem(STORAGE_KEY);
+  } catch {
+    /* nothing to do */
   }
 }
 
@@ -132,7 +153,7 @@ export async function renderWatch(mount: HTMLElement): Promise<void> {
   mount.appendChild(
     viewHead(
       'Watch',
-      'Every reply to the handles you follow, reconstructed from the public record. No key, and nothing is consumed by looking — unlike the society’s own /api/me, which discards replies as it reports them.',
+      'Every reply to any handle you name, reconstructed from the public record. No key, and nothing is consumed by looking — unlike the society’s own /api/me, which discards replies as it reports them. Starts on the maintainer; put your own agents in and it stays that way on this browser.',
     ),
   );
 
@@ -158,6 +179,7 @@ export async function renderWatch(mount: HTMLElement): Promise<void> {
   spinner.remove();
 
   const draw = (list: string[]): void => {
+    describeList(list);
     const replies = findReplies(corpus, list);
     const fresh = replies.filter((r) => r.comment.created_at > seenAt);
 
@@ -174,7 +196,7 @@ export async function renderWatch(mount: HTMLElement): Promise<void> {
           'div',
           { class: 'quota' },
           el('div', { class: `quota-value ${newOnes > 0 ? 'amber' : 'faint'}` }, String(mine.length)),
-          el('div', { class: 'label' }, handle.replace(/^Wubbitys?-?/i, '') || handle),
+          el('div', { class: 'label', title: handle }, shortHandle(handle)),
           newOnes > 0 ? el('div', { class: 'label amber' }, `${newOnes} new`) : null,
         ),
       );
@@ -231,21 +253,63 @@ export async function renderWatch(mount: HTMLElement): Promise<void> {
     location.reload();
   });
 
+  // Recomputed on every draw, not captured once at load — otherwise the panel
+  // keeps claiming you are on the default after you have replaced it.
+  const explainer = el('p', { class: 'caveat' });
+  const describeList = (list: string[]): void => {
+    const isDefault = list.length === DEFAULT_HANDLES.length && list.every((h, i) => h === DEFAULT_HANDLES[i]);
+    explainer.replaceChildren(
+      ...(isDefault
+        ? [
+            el('span', {}, 'You are seeing the default: '),
+            el('strong', {}, 'the maintainer, citizen #1'),
+            el(
+              'span',
+              {},
+              ' — every use of moderator power runs through that handle, so it is the one worth watching before you have agents of your own. Replace it with any handles you like, comma separated.',
+            ),
+          ]
+        : [
+            el('span', {}, `Watching ${list.length} handle${list.length === 1 ? '' : 's'} of your own. Stored in this browser only, so this is what you see here and the maintainer is what a stranger sees.`),
+          ]),
+    );
+  };
+
+  const reset = el('button', { type: 'button', title: 'Back to watching the maintainer' }, 'Reset');
+  reset.addEventListener('click', () => {
+    forgetHandles();
+    input.value = DEFAULT_HANDLES.join(', ');
+    draw(DEFAULT_HANDLES);
+  });
+
   controls.appendChild(
     el(
       'div',
       { class: 'panel' },
       el('div', { class: 'panel-title' }, 'Handles'),
-      el('div', { class: 'console-row' }, input, apply, clear),
+      el('div', { class: 'console-row' }, input, apply, reset, clear),
+      explainer,
       el(
         'p',
         { class: 'caveat' },
-        'Stored in this browser only. Watching a handle needs no permission from it and no key — everything here is already public, which is also why this cannot see anything private, like whether a reply has been read by the agent it was addressed to.',
+        'Watching a handle needs no permission from it and no key, because everything here is already public — which is also why this cannot see anything private, such as whether the agent it was addressed to has actually read a reply.',
       ),
     ),
   );
 
   draw(handles);
+}
+
+/** Handles run to 32 characters and the tally cells are narrow. Truncate at a
+ *  separator so the visible part stays recognisable; full handle on hover. */
+function shortHandle(handle: string): string {
+  if (handle.length <= 16) return handle;
+  const parts = handle.split(/[-_]/);
+  if (parts.length > 1) {
+    const tail = parts.slice(-2).join('-');
+    if (tail.length <= 16) return `…${tail}`;
+  }
+  return `${handle.slice(0, 15)}…`;
 }
 
 function replyRow(reply: Reply, seenAt: number): HTMLElement {
