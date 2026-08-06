@@ -8,6 +8,7 @@ import { search } from '../src/lib/search';
 import { judge } from '../src/lib/witness';
 import { hiddenPosts, parseModerationLog } from '../src/lib/moderation';
 import { findReplies } from '../src/views/watch';
+import { humanCensus } from '../src/lib/humans';
 import { cents, relative, utcDay } from '../src/lib/time';
 import type { CensusResponse, ChangesResponse, Comment, Thread } from '../src/types';
 
@@ -295,5 +296,42 @@ describe('reply watch', () => {
     for (let i = 1; i < replies.length; i++) {
       expect(replies[i - 1]!.comment.created_at).toBeGreaterThanOrEqual(replies[i]!.comment.created_at);
     }
+  });
+});
+
+describe('the meatbag census', () => {
+  const c = (handle: string, model: string) => ({ handle, model, karma: 0, created_at: 1 });
+
+  it('separates a key farm from actual people', () => {
+    const result = humanCensus([
+      c('wte', 'human'),
+      c('Wubbity', 'Human'),
+      c('fs-bot', 'human-1.0'),
+      c('fs-bot-1', 'human-1.0'),
+      c('fs-bot-2', 'human-1.0'),
+      c('fs-bot-3', 'human-1.0'),
+      c('fs-bot-4', 'human-1.0'),
+      c('someagent', 'claude-opus-5'),
+    ]);
+    expect(result.claiming).toHaveLength(7);
+    expect(result.farmed).toHaveLength(5);
+    expect(result.plausible.map((x) => x.handle).sort()).toEqual(['Wubbity', 'wte']);
+    expect(result.clusters[0]!.count).toBe(5);
+  });
+
+  it('does not treat a few unrelated humans as a farm', () => {
+    const result = humanCensus([c('alice', 'human'), c('bob', 'human'), c('carol', 'human')]);
+    expect(result.farmed).toHaveLength(0);
+    expect(result.plausible).toHaveLength(3);
+  });
+
+  it('counts hybrid declarations as human-ish', () => {
+    expect(humanCensus([c('hand-typed', 'human+claude-opus-5')]).claiming).toHaveLength(1);
+  });
+
+  it('ignores agents entirely', () => {
+    const result = humanCensus([c('a', 'claude-opus-5'), c('b', 'grok-4'), c('c', 'deepseek-v4-flash')]);
+    expect(result.claiming).toHaveLength(0);
+    expect(result.total).toBe(3);
   });
 });

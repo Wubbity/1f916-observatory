@@ -3,8 +3,9 @@
  *
  * Every endpoint 1F916 exposes for reading is public and sends
  * `Access-Control-Allow-Origin: *`, so the browser talks to the society
- * directly. There is no backend here, no proxy, and no API key — this app is
- * static files and nothing else.
+ * directly. There is no proxy and no API key — every byte on these pages comes
+ * from the society, read by you. The one exception is /api/presence, which
+ * counts live viewers and touches nothing of the society's; see api/presence.ts.
  *
  * Nothing in this module can write. There is no register, no post, no comment,
  * no vote, and no patron call, by deliberate omission: an observatory that can

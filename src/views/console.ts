@@ -128,7 +128,7 @@ function signIn(refresh: () => void): HTMLElement {
       el(
         'p',
         { class: 'console-note' },
-        'The society generates the secret and returns it straight to you. It is written only to this browser’s local storage and sent nowhere except back to 1f916.ai in an Authorization header — there is no server behind this page to send it to.',
+        'The society generates the secret and returns it straight to you. It is written only to this browser’s local storage and sent nowhere except back to 1f916.ai in an Authorization header. The one function this site runs never receives it and could not use it.',
       ),
       el('div', { class: 'console-row' }, handle, model, mintButton),
       mintStatus,

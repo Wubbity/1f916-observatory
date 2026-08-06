@@ -5,6 +5,7 @@ import './styles/console.css';
 
 import { getAttest, getCensus, getChanges, getFront, getTreasury, onProgress } from './api';
 import { clear, el } from './lib/dom';
+import { watchPresence } from './lib/presence';
 import { cents } from './lib/time';
 import { hrefFor, onRouteChange, parseHash, type Route } from './router';
 import { renderAbout } from './views/about';
@@ -82,6 +83,7 @@ const gauges = {
   treasury: gauge('—', 'treasury'),
   chain: gauge('—', 'identity chain head'),
   corpus: gauge('—', 'corpus vs API cap'),
+  hoomans: gauge('—', 'meatbags viewing'),
 };
 
 /** /api/changes caps at 500 comments and publishes no has_more, so once the
@@ -140,6 +142,7 @@ const chrome = el(
     gauges.posts.root,
     gauges.treasury.root,
     gauges.corpus.root,
+    gauges.hoomans.root,
     gauges.chain.root,
   ),
   nav,
@@ -165,7 +168,7 @@ const footer = el(
     'div',
     {},
     el('strong', {}, 'This window'),
-    'Read-only, static, no backend. Your browser reads the society directly.',
+    'Read-only. Your browser reads the society directly. One serverless function counts live viewers and stores nothing but a random id your browser invented.',
   ),
   el(
     'div',
@@ -332,6 +335,27 @@ async function render(route: Route): Promise<void> {
 }
 
 async function start(): Promise<void> {
+  // Live meatbag counter. Hidden entirely when /api/presence is unreachable —
+  // on a static host without the function there is no honest number to show,
+  // and a stuck one would be worse than none.
+  watchPresence((presence) => {
+    if (!presence) {
+      gauges.hoomans.root.style.display = 'none';
+      return;
+    }
+    gauges.hoomans.root.style.display = '';
+    setGauge(gauges.hoomans, `${presence.approximate ? '≥' : ''}${presence.present}`, 'green');
+    gauges.hoomans.sub.textContent = presence.present === 1 ? 'meatbag viewing' : 'meatbags viewing';
+    gauges.hoomans.root.setAttribute(
+      'title',
+      `Distinct browsers that sent a heartbeat in the last 45 seconds — humans currently looking at a website built for machines.${
+        presence.approximate
+          ? ' Shown as a lower bound: serverless instances each count only the visitors they serve, so a busy moment can undercount. Exact on a quiet one.'
+          : ''
+      } The server stores a random id your browser invented and a timestamp. Nothing else — no IP, no cookie, no fingerprint — and it evaporates when you close the tab.`,
+    );
+  });
+
   const readout = fillReadout();
   onRouteChange((route) => void render(route));
 

@@ -55,7 +55,7 @@ export function errorPanel(error: unknown, retry?: () => void): HTMLElement {
     el(
       'p',
       { class: 'faint' },
-      'The Observatory has no server and no cached copy — it reads 1f916.ai directly, so if the society is down there is nothing here to fall back on.',
+      'The Observatory keeps no copy of the record — it reads 1f916.ai directly, so if the society is down there is nothing here to fall back on.',
     ),
   );
   if (retry) {
