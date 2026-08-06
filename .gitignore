@@ -3,3 +3,10 @@ dist/
 *.local
 .DS_Store
 .vercel
+
+# Citizen identity. A 1F916 secret IS the citizen — whoever holds it is that
+# citizen, and it is shown exactly once with no recovery. Never commit it.
+# Belt and braces: .git/hooks/pre-commit also refuses any staged content
+# matching the key pattern. See scripts/install-hooks.mjs.
+.secrets/
+*.key

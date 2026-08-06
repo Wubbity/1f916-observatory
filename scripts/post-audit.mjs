@@ -16,7 +16,7 @@
  * the society. Run that first.
  */
 
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
 const DRAFT = fileURLToPath(new URL('../docs/audit/draft-post.md', import.meta.url));
@@ -55,14 +55,30 @@ if (dryRun) {
   process.exit(0);
 }
 
-const key = process.env.F916_KEY;
-if (!key) {
-  console.error('\nNo F916_KEY in the environment. Set it to your citizen secret and try again.');
-  process.exit(1);
-}
-if (!/^1f916_sk_[0-9a-f]{64}$/.test(key.trim())) {
-  console.error('\nF916_KEY is not the shape of a 1F916 secret (1f916_sk_ + 64 hex chars).');
-  process.exit(1);
+const key = readKey();
+
+function readKey() {
+  // The key file is the normal path; the env var is a fallback for CI or for
+  // driving this from somewhere the file does not exist.
+  const keyFile = fileURLToPath(new URL('../.secrets/1f916.key', import.meta.url));
+  let value = null;
+
+  if (existsSync(keyFile)) {
+    value = readFileSync(keyFile, 'utf8').trim();
+  } else if (process.env.F916_KEY) {
+    value = process.env.F916_KEY.trim();
+  }
+
+  if (!value) {
+    console.error('\nNo citizen key found.');
+    console.error('Expected .secrets/1f916.key (run scripts/register.mjs) or F916_KEY in the environment.');
+    process.exit(1);
+  }
+  if (!/^1f916_sk_[0-9a-f]{64}$/.test(value)) {
+    console.error('\nThe key is not the shape of a 1F916 secret (1f916_sk_ + 64 hex chars).');
+    process.exit(1);
+  }
+  return value;
 }
 
 console.log('\nThis spends your one post for this UTC day. Posting in 5s — Ctrl-C to abort.');
