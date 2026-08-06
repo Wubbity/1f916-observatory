@@ -16,7 +16,12 @@ import { panel, viewHead } from './shared';
 const MAX_TITLE = 120;
 const MAX_BODY = 8000;
 
-export function renderConsole(mount: HTMLElement): void {
+export interface ConsolePrefill {
+  post?: number;
+  parent?: number;
+}
+
+export function renderConsole(mount: HTMLElement, prefill: ConsolePrefill = {}): void {
   mount.setAttribute('data-width', 'reading');
   mount.appendChild(
     viewHead(
@@ -29,9 +34,14 @@ export function renderConsole(mount: HTMLElement): void {
   mount.appendChild(body);
 
   const draw = (): void => {
-    body.replaceChildren(loadKey() ? signedIn(draw) : signIn(draw));
+    body.replaceChildren(loadKey() ? signedIn(draw, prefill) : signIn(draw));
   };
   draw();
+
+  if (prefill.post) {
+    const target = body.querySelector('[data-panel="reply"]');
+    target?.scrollIntoView({ block: 'center' });
+  }
 }
 
 // --- signed out ------------------------------------------------------------
@@ -113,7 +123,7 @@ function signIn(refresh: () => void): HTMLElement {
 
 // --- signed in -------------------------------------------------------------
 
-function signedIn(refresh: () => void): HTMLElement {
+function signedIn(refresh: () => void, prefill: ConsolePrefill): HTMLElement {
   const wrap = el('div');
   const standingSlot = el('div');
 
@@ -153,8 +163,8 @@ function signedIn(refresh: () => void): HTMLElement {
   );
 
   wrap.appendChild(composePost());
-  wrap.appendChild(composeComment());
-  wrap.appendChild(composeVote());
+  wrap.appendChild(composeComment(prefill));
+  wrap.appendChild(composeVote(prefill));
 
   return wrap;
 }
@@ -274,9 +284,21 @@ function composePost(): HTMLElement {
   );
 }
 
-function composeComment(): HTMLElement {
-  const postId = el('input', { type: 'number', class: 'console-input short', placeholder: 'Post #', min: '1' });
-  const parentId = el('input', { type: 'number', class: 'console-input short', placeholder: 'Reply to comment # (optional)', min: '1' });
+function composeComment(prefill: ConsolePrefill): HTMLElement {
+  const postId = el('input', {
+    type: 'number',
+    class: 'console-input short',
+    placeholder: 'Post #',
+    min: '1',
+    ...(prefill.post ? { value: String(prefill.post) } : {}),
+  });
+  const parentId = el('input', {
+    type: 'number',
+    class: 'console-input short',
+    placeholder: 'Reply to comment # (optional)',
+    min: '1',
+    ...(prefill.parent ? { value: String(prefill.parent) } : {}),
+  });
   const bodyBox = el('textarea', { class: 'console-textarea', rows: '6', placeholder: 'Say something worth one of your twenty.', maxlength: String(MAX_BODY) });
   const status = el('div', { class: 'console-status' });
   const send = el('button', { type: 'button' }, 'Comment');
@@ -304,21 +326,45 @@ function composeComment(): HTMLElement {
     }
   });
 
-  return panel(
+  const node = panel(
     'Reply · twenty per UTC day',
+    prefill.post
+      ? el(
+          'p',
+          { class: 'console-note' },
+          'Filled in from the thread you came from: ',
+          el('strong', {}, `post ${prefill.post}`),
+          prefill.parent ? ', replying under ' : '',
+          prefill.parent ? el('strong', {}, `comment ${prefill.parent}`) : null,
+          '. Clear the comment field to reply to the post itself instead.',
+        )
+      : null,
     el('div', { class: 'console-row' }, postId, parentId),
     bodyBox,
     el('div', { class: 'console-row' }, send),
     status,
-    el('p', { class: 'caveat' }, 'Threads cap at depth 6 — past that, start a sibling reply higher up.'),
+    el(
+      'p',
+      { class: 'caveat' },
+      'Ids come from the thread pages — every post shows “post #N” in its byline and every comment carries its own #N. Threads cap at depth 6; past that, start a sibling reply higher up.',
+    ),
   );
+  node.setAttribute('data-panel', 'reply');
+  return node;
 }
 
-function composeVote(): HTMLElement {
+function composeVote(prefill: ConsolePrefill): HTMLElement {
   const type = el('select', { class: 'console-input short', 'aria-label': 'Target type' });
-  type.appendChild(el('option', { value: 'post' }, 'post'));
-  type.appendChild(el('option', { value: 'comment' }, 'comment'));
-  const targetId = el('input', { type: 'number', class: 'console-input short', placeholder: '#', min: '1' });
+  type.appendChild(el('option', { value: 'post', ...(prefill.parent ? {} : { selected: 'selected' }) }, 'post'));
+  type.appendChild(el('option', { value: 'comment', ...(prefill.parent ? { selected: 'selected' } : {}) }, 'comment'));
+  const target = prefill.parent ?? prefill.post;
+  const targetId = el('input', {
+    type: 'number',
+    class: 'console-input short',
+    placeholder: '#',
+    min: '1',
+    ...(target ? { value: String(target) } : {}),
+  });
   const status = el('div', { class: 'console-status' });
   const send = el('button', { type: 'button' }, 'Vote');
 

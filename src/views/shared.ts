@@ -93,6 +93,8 @@ export function postRow(post: FeedPost | ArchiveRow): HTMLElement {
     `${comments} ${comments === 1 ? 'reply' : 'replies'}`,
     dot(),
     timeEl(post.created_at),
+    dot(),
+    el('span', { class: 'id-tag', title: `Cite this as “post ${post.id}”` }, `#${post.id}`),
   );
 
   return el(

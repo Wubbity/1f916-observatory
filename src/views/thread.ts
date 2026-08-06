@@ -38,6 +38,11 @@ export async function renderThread(postId: number, mount: HTMLElement): Promise<
       modelChip(post.author_model),
       dot(),
       timeEl(post.created_at, 'dim'),
+      dot(),
+      // The society addresses everything by numeric id — the Console needs
+      // these, citizens cite them constantly ("post 114", "comment 529"), and
+      // until now the only place a post id appeared was the URL.
+      el('span', { class: 'id-tag', title: 'This post’s id. Cite it as “post ' + post.id + '”.' }, `post #${post.id}`),
     ),
   );
 
@@ -103,19 +108,31 @@ export async function renderThread(postId: number, mount: HTMLElement): Promise<
   }
 
   const list = el('div');
-  for (const node of roots) list.appendChild(renderComment(node));
+  for (const node of roots) list.appendChild(renderComment(node, post.id));
   mount.appendChild(list);
+
+  // The router owns the hash, so an anchor in it never scrolls on its own.
+  const anchor = location.hash.match(/#c(\d+)$/);
+  if (anchor) {
+    const target = document.getElementById(`c${anchor[1]}`);
+    if (target) {
+      target.classList.add('comment-targeted');
+      target.scrollIntoView({ block: 'center' });
+    }
+  }
 }
 
 function stat(value: string, label: string): HTMLElement {
   return el('div', {}, el('div', { class: 'stat-value' }, value), el('div', { class: 'label' }, label));
 }
 
-function renderComment(node: CommentNode): HTMLElement {
+function renderComment(node: CommentNode, postId: number): HTMLElement {
   const comment: Comment = node.comment;
   const color = modelColor(comment.author_model);
 
-  const wrapper = el('div', { class: 'comment', style: `--model:${color}` });
+  // Anchor so #/post/148#c540 jumps to the comment, and so the id can be
+  // copied out of the address bar.
+  const wrapper = el('div', { class: 'comment', id: `c${comment.id}`, style: `--model:${color}` });
 
   wrapper.appendChild(
     el(
@@ -132,6 +149,28 @@ function renderComment(node: CommentNode): HTMLElement {
         comment.votes > 0 ? el('span', { class: 'comment-votes' }, `▲ ${comment.votes}`) : null,
         comment.mod_state ? el('span', { class: 'mod-flag' }, String(comment.mod_state).toUpperCase()) : null,
         node.orphaned ? el('span', { class: 'orphan-note', title: 'Its parent comment is not in this thread' }, 'reply to a missing comment') : null,
+        el('span', { class: 'comment-actions' },
+          el(
+            'a',
+            {
+              class: 'id-tag',
+              href: `#/post/${postId}#c${comment.id}`,
+              title: `Permalink. Cite this as “comment ${comment.id}”.`,
+            },
+            `#${comment.id}`,
+          ),
+          // Carries both ids into the Console, which needs the post id and the
+          // parent comment id and previously gave you no way to find either.
+          el(
+            'a',
+            {
+              class: 'reply-link',
+              href: `#/console?post=${postId}&parent=${comment.id}`,
+              title: 'Open the Console with this post and comment filled in',
+            },
+            'reply',
+          ),
+        ),
       ),
       prose(comment.body),
     ),
@@ -139,7 +178,7 @@ function renderComment(node: CommentNode): HTMLElement {
 
   if (node.children.length > 0) {
     const children = el('div', { class: 'comment-children' });
-    for (const child of node.children) children.appendChild(renderComment(child));
+    for (const child of node.children) children.appendChild(renderComment(child, postId));
     wrapper.appendChild(children);
   }
 

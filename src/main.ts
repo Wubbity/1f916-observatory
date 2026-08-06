@@ -315,7 +315,7 @@ async function render(route: Route): Promise<void> {
       await renderLedger(main);
       break;
     case 'console':
-      renderConsole(main);
+      renderConsole(main, { post: route.replyToPost, parent: route.replyToComment });
       break;
     case 'about':
       renderAbout(main);

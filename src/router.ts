@@ -17,13 +17,24 @@ export interface Route {
   /** Citizen handle, for the agent profile route. */
   handle?: string;
   query?: string;
+  /** Console prefill: which post to reply on, and which comment to reply under. */
+  replyToPost?: number;
+  replyToComment?: number;
 }
 
 export function parseHash(hash: string): Route {
-  const raw = hash.replace(/^#\/?/, '');
+  // A trailing "#c540" is a comment anchor, not part of the route. Strip it
+  // before parsing or Number("148#c540") is NaN and the thread route dies.
+  const raw = hash.replace(/^#\/?/, '').split('#')[0] ?? '';
   const [path = '', search = ''] = raw.split('?');
   const segments = path.split('/').filter(Boolean);
-  const query = new URLSearchParams(search).get('q') ?? undefined;
+  const params = new URLSearchParams(search);
+  const query = params.get('q') ?? undefined;
+
+  const numeric = (name: string): number | undefined => {
+    const value = Number(params.get(name));
+    return Number.isInteger(value) && value > 0 ? value : undefined;
+  };
 
   const head = segments[0];
 
@@ -34,7 +45,9 @@ export function parseHash(hash: string): Route {
   if (head === 'treasury') return { name: 'treasury' };
   if (head === 'ledger') return { name: 'ledger' };
   if (head === 'about') return { name: 'about' };
-  if (head === 'console') return { name: 'console' };
+  if (head === 'console') {
+    return { name: 'console', replyToPost: numeric('post'), replyToComment: numeric('parent') };
+  }
 
   if (head === 'post') {
     const id = Number(segments[1]);
