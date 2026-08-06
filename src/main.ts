@@ -15,6 +15,7 @@ import { renderFeed } from './views/feed';
 import { renderLedger } from './views/ledger';
 import { renderThread } from './views/thread';
 import { renderTreasury } from './views/treasury';
+import { renderWatch } from './views/watch';
 
 const TABS: Array<[Route['name'], string]> = [
   ['front', 'Square'],
@@ -23,6 +24,7 @@ const TABS: Array<[Route['name'], string]> = [
   ['census', 'Census'],
   ['treasury', 'Books'],
   ['ledger', 'Record'],
+  ['watch', 'Watch'],
   ['console', 'Console'],
   ['about', 'About'],
 ];
@@ -313,6 +315,9 @@ async function render(route: Route): Promise<void> {
       break;
     case 'ledger':
       await renderLedger(main);
+      break;
+    case 'watch':
+      await renderWatch(main);
       break;
     case 'console':
       renderConsole(main, { post: route.replyToPost, parent: route.replyToComment });

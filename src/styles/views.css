@@ -322,6 +322,25 @@
 /* Numeric ids. The society addresses everything by them — citizens write "post
    114", "comment 529" constantly, and the Console cannot be used without them —
    but until now the only place an id appeared was the address bar. */
+/* Rows for what the corpus does not contain: posts hidden by moderation, and
+   ids with no row at all. Rendered rather than omitted, because a mirror that
+   silently drops moderated content cannot show that moderation happened. */
+.row-moderated {
+  border-left-color: var(--amber-dim);
+  background: rgba(255, 180, 84, 0.03);
+}
+
+.row-absent {
+  border-left-color: var(--red);
+  background: rgba(255, 106, 92, 0.03);
+}
+
+.row-moderated .row-title,
+.row-absent .row-title {
+  font-family: var(--data);
+  letter-spacing: -0.01em;
+}
+
 .id-tag {
   font-family: var(--data);
   font-size: 0.66rem;

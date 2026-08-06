@@ -6,6 +6,8 @@ import { buildTree, countNodes, modelsInThread } from '../src/lib/tree';
 import { familyBreakdown, familyOf, modelColor } from '../src/lib/models';
 import { search } from '../src/lib/search';
 import { judge } from '../src/lib/witness';
+import { hiddenPosts, parseModerationLog } from '../src/lib/moderation';
+import { findReplies } from '../src/views/watch';
 import { cents, relative, utcDay } from '../src/lib/time';
 import type { CensusResponse, ChangesResponse, Comment, Thread } from '../src/types';
 
@@ -205,5 +207,93 @@ describe('the corpus fixture', () => {
     // assembled corpus are both valid inputs.
     const hits = search({ posts: changes.posts, comments: changes.comments }, 'memory');
     expect(hits.length).toBeGreaterThan(0);
+  });
+});
+
+describe('moderation log parsing', () => {
+  const rows = [
+    { kind: 'moderation', detail: 'collapsed post 70: naked memecoin shill — only a token address', created_at: 300, citizen: '1f916-agent' },
+    { kind: 'moderation', detail: 'unpinned post 27', created_at: 100, citizen: '1f916-agent' },
+    { kind: 'moderation', detail: 'bulletin post 109 (cap-exempt, auto-pinned)', created_at: 200, citizen: '1f916-agent' },
+    { kind: 'moderation', detail: 'auto-collapsed post 88: reached 5 community flags', created_at: 400, citizen: '1f916-agent' },
+    { kind: 'moderation', detail: 'something the maintainer worded differently', created_at: 500, citizen: '1f916-agent' },
+  ];
+
+  it('extracts action, post id and public reason', () => {
+    const { events } = parseModerationLog(rows);
+    const collapse = events.find((e) => e.postId === 70)!;
+    expect(collapse.action).toBe('collapsed');
+    expect(collapse.reason).toContain('memecoin');
+    expect(events.find((e) => e.postId === 27)!.action).toBe('unpinned');
+    expect(events.find((e) => e.postId === 109)!.action).toBe('bulletin');
+    expect(events.find((e) => e.postId === 88)!.action).toBe('collapsed');
+  });
+
+  it('surfaces rows it cannot classify rather than dropping them', () => {
+    // The log is prose. If the maintainer rewords a detail, this client must
+    // fail visibly — a silent drop is the exact bug this whole feature fixes.
+    const { unparsed } = parseModerationLog(rows);
+    expect(unparsed).toHaveLength(1);
+    expect(unparsed[0]!.detail).toContain('worded differently');
+  });
+
+  it('treats a later restore as undoing an earlier collapse', () => {
+    const { events } = parseModerationLog([
+      { kind: 'moderation', detail: 'collapsed post 5: spam', created_at: 100, citizen: 'a' },
+      { kind: 'moderation', detail: 'restored post 5 to visible', created_at: 200, citizen: 'a' },
+      { kind: 'moderation', detail: 'collapsed post 6: spam', created_at: 100, citizen: 'a' },
+    ]);
+    const hidden = hiddenPosts(events);
+    expect(hidden.has(5)).toBe(false);
+    expect(hidden.has(6)).toBe(true);
+  });
+});
+
+describe('reply watch', () => {
+  const corpus = {
+    posts: [
+      { id: 1, title: 'my post', author: 'Wubbity' },
+      { id: 2, title: 'their post', author: 'stranger' },
+    ],
+    comments: [
+      { id: 10, post_id: 1, parent_id: null, body: 'nice post', author: 'stranger', author_model: 'x', mod_state: null, created_at: 100 },
+      { id: 11, post_id: 2, parent_id: null, body: 'my comment', author: 'Wubbity', author_model: 'Human', mod_state: null, created_at: 200 },
+      { id: 12, post_id: 2, parent_id: 11, body: 'replying to you', author: 'stranger', author_model: 'x', mod_state: null, created_at: 300 },
+      { id: 13, post_id: 2, parent_id: null, body: 'unrelated', author: 'other', author_model: 'x', mod_state: null, created_at: 400 },
+      { id: 14, post_id: 1, parent_id: null, body: 'my own follow-up', author: 'Wubbity', author_model: 'Human', mod_state: null, created_at: 500 },
+    ] as never[],
+  };
+
+  it('finds comments on a watched handle’s post', () => {
+    const replies = findReplies(corpus, ['Wubbity']);
+    expect(replies.some((r) => r.comment.id === 10 && r.kind === 'post')).toBe(true);
+  });
+
+  it('finds direct replies to a watched handle’s comment', () => {
+    const replies = findReplies(corpus, ['Wubbity']);
+    const direct = replies.find((r) => r.comment.id === 12)!;
+    expect(direct.kind).toBe('comment');
+    expect(direct.to).toBe('Wubbity');
+  });
+
+  it('never reports the watched handle replying to itself', () => {
+    const replies = findReplies(corpus, ['Wubbity']);
+    expect(replies.some((r) => r.comment.author === 'Wubbity')).toBe(false);
+  });
+
+  it('ignores unrelated comments on threads the handle merely visited', () => {
+    const replies = findReplies(corpus, ['Wubbity']);
+    expect(replies.some((r) => r.comment.id === 13)).toBe(false);
+  });
+
+  it('is case-insensitive, matching the schema’s COLLATE NOCASE', () => {
+    expect(findReplies(corpus, ['wubbity']).length).toBe(findReplies(corpus, ['Wubbity']).length);
+  });
+
+  it('returns newest first', () => {
+    const replies = findReplies(corpus, ['Wubbity']);
+    for (let i = 1; i < replies.length; i++) {
+      expect(replies[i - 1]!.comment.created_at).toBeGreaterThanOrEqual(replies[i]!.comment.created_at);
+    }
   });
 });

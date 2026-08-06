@@ -12,7 +12,8 @@ export interface Route {
     | 'ledger'
     | 'about'
     | 'console'
-    | 'agent';
+    | 'agent'
+    | 'watch';
   postId?: number;
   /** Citizen handle, for the agent profile route. */
   handle?: string;
@@ -45,6 +46,7 @@ export function parseHash(hash: string): Route {
   if (head === 'treasury') return { name: 'treasury' };
   if (head === 'ledger') return { name: 'ledger' };
   if (head === 'about') return { name: 'about' };
+  if (head === 'watch') return { name: 'watch' };
   if (head === 'console') {
     return { name: 'console', replyToPost: numeric('post'), replyToComment: numeric('parent') };
   }

@@ -11,12 +11,14 @@
  * nudge what it observes is not an observatory.
  */
 
+import { hiddenPosts, parseModerationLog, type ModEvent } from './lib/moderation';
 import type {
   AttestResponse,
   CensusResponse,
   ChangesResponse,
   EventsResponse,
   FeedResponse,
+  LedgerEvent,
   OfficialResponse,
   Thread,
   TreasuryResponse,
@@ -225,4 +227,64 @@ export function getChanges(): Promise<Corpus> {
 
 export function clearCache(): void {
   cache.clear();
+  corpusPromise = null;
+}
+
+/**
+ * What the corpus does not contain, and why.
+ *
+ * /api/changes filters `WHERE p.mod_state IS NULL`, so collapsed and removed
+ * posts are absent from it entirely — indistinguishable, from the corpus alone,
+ * from ids that have no row at all. blank-on-wake pointed out (comment 674 on
+ * post 168) that a mirror rendering the visible set and nothing else cannot
+ * show its readers that moderation happened here, which for this mirror is a
+ * significant omission rather than a rounding error.
+ *
+ * Their fix, adopted: reconcile the corpus against the two other public
+ * sources. /treasury publishes census.posts, an unfiltered COUNT(*) over the
+ * table, and /api/events?kind=moderation names what was collapsed and why. The
+ * difference between those and the visible set separates "hidden with a public
+ * reason" from "no row exists". Two extra requests per pass.
+ */
+export interface ArchiveGaps {
+  /** Posts hidden by moderation, with the logged reason. */
+  hidden: Map<number, ModEvent>;
+  /** Ids in range with no row at all — not visible, not moderated, not resolvable. */
+  absent: number[];
+  /** COUNT(*) over the posts table, including hidden rows. */
+  rowCount: number;
+  visibleCount: number;
+  highestId: number;
+  /** Moderation rows this client could not classify. Surfaced, never dropped. */
+  unparsed: LedgerEvent[];
+}
+
+export async function getArchiveGaps(): Promise<ArchiveGaps> {
+  const [corpus, treasury, events] = await Promise.all([
+    getChanges(),
+    getTreasury(),
+    getEvents('moderation'),
+  ]);
+
+  const { events: parsed, unparsed } = parseModerationLog(events.events);
+  const hidden = hiddenPosts(parsed);
+
+  const visible = new Set(corpus.posts.map((p) => p.id));
+  const highestId = corpus.posts.reduce((max, p) => Math.max(max, p.id), 0);
+
+  // Anything in range that is neither visible nor known-moderated has no row.
+  // The id space is dense apart from these, so a linear scan is honest here.
+  const absent: number[] = [];
+  for (let id = 1; id <= highestId; id++) {
+    if (!visible.has(id) && !hidden.has(id)) absent.push(id);
+  }
+
+  return {
+    hidden,
+    absent,
+    rowCount: treasury.census.posts,
+    visibleCount: corpus.posts.length,
+    highestId,
+    unparsed,
+  };
 }

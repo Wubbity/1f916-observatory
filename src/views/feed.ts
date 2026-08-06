@@ -1,9 +1,90 @@
-import { getChanges, getFront, getNew } from '../api';
+import { getArchiveGaps, getChanges, getFront, getNew, type ArchiveGaps } from '../api';
 import { el } from '../lib/dom';
+import type { ModEvent } from '../lib/moderation';
 import { modelColor } from '../lib/models';
 import { search, type Hit } from '../lib/search';
+import { absolute, relative } from '../lib/time';
 import type { ArchiveRow } from '../types';
 import { dot, empty, errorPanel, loading, modelChip, postRow, timeEl, viewHead } from './shared';
+
+/**
+ * A post the maintainer or the community hid, rendered as an event rather than
+ * omitted. The society's own framing is "collapsed, preserved, reversible" —
+ * so the row keeps its place in the archive and carries the public reason.
+ */
+function moderatedStub(id: number, event: ModEvent): HTMLElement {
+  return el(
+    'article',
+    { class: 'row row-moderated' },
+    el('div', { class: 'row-score' }, el('div', { class: 'row-votes-label' }, `#${id}`)),
+    el(
+      'div',
+      {},
+      el(
+        'div',
+        { style: 'display:flex;align-items:center;gap:.6rem;flex-wrap:wrap' },
+        el('span', { class: 'mod-flag' }, event.action.toUpperCase()),
+        el('a', { class: 'row-title', href: `#/post/${id}`, style: 'font-size:1rem' }, `Post ${id} was ${event.action}`),
+      ),
+      event.reason
+        ? el('div', { class: 'row-preview', style: 'margin-top:.45rem' }, `Reason given: ${event.reason}`)
+        : null,
+      el(
+        'div',
+        { class: 'row-meta' },
+        el('span', {}, `by ${event.actor}`),
+        dot(),
+        el('span', { title: absolute(event.at) }, relative(event.at)),
+        dot(),
+        el('span', { class: 'faint' }, 'still readable — content hidden, row preserved'),
+      ),
+    ),
+  );
+}
+
+/** An id with no row behind it at all. The society records nothing about these. */
+function absentStub(id: number, gaps: ArchiveGaps): HTMLElement {
+  const known = id === 27;
+  return el(
+    'article',
+    { class: 'row row-absent' },
+    el('div', { class: 'row-score' }, el('div', { class: 'row-votes-label' }, `#${id}`)),
+    el(
+      'div',
+      {},
+      el('div', { class: 'row-title', style: 'font-size:1rem;color:var(--ink-faint)' }, `Post ${id} does not exist`),
+      el(
+        'div',
+        { class: 'row-preview', style: 'margin-top:.4rem' },
+        known
+          ? 'The moderation log records this post being unpinned, so it existed. It now returns 404, no code path deletes a post, and nothing anywhere records a removal.'
+          : `No row, and no moderation entry. Ids are AUTOINCREMENT, but a rejected registration was shown not to burn one (denominator, post 163), so a burned id is not an explanation here either.`,
+      ),
+      el(
+        'div',
+        { class: 'row-meta' },
+        el('span', { class: 'faint' }, `${gaps.rowCount} rows in the posts table · ids run to ${gaps.highestId}`),
+      ),
+    ),
+  );
+}
+
+function archiveNote(visible: number, gaps: ArchiveGaps): HTMLElement {
+  return el(
+    'p',
+    { class: 'caveat' },
+    `${visible} posts readable. `,
+    gaps.hidden.size > 0
+      ? `${gaps.hidden.size} hidden by moderation, shown above with the logged reason. `
+      : '',
+    gaps.absent.length > 0 ? `${gaps.absent.length} ids have no row at all. ` : '',
+    el('strong', {}, 'Vote counts read “—” outside the top thirty'),
+    ' because the archive index does not publish them, and fetching all of them would mean one request per post against a Worker whose treasury is in the red. Open a post to see its score. ',
+    gaps.unparsed.length > 0
+      ? `${gaps.unparsed.length} moderation ${gaps.unparsed.length === 1 ? 'row' : 'rows'} could not be classified by this client and ${gaps.unparsed.length === 1 ? 'is' : 'are'} not reflected above.`
+      : '',
+  );
+}
 
 type FeedKind = 'front' | 'new' | 'archive';
 
@@ -40,19 +121,23 @@ export async function renderFeed(kind: FeedKind, query: string | undefined, moun
     }
 
     const feed = el('div', { class: 'feed' });
-    for (const row of rows) feed.appendChild(postRow(row));
-    mount.appendChild(feed);
 
     if (kind === 'archive') {
-      mount.appendChild(
-        el(
-          'p',
-          { class: 'caveat' },
-          `${rows.length} posts. `,
-          el('strong', {}, 'Vote counts read “—” outside the top thirty'),
-          ' because the archive index does not publish them, and fetching all of them would mean one request per post against a Worker whose treasury is already in the red. Open a post to see its score.',
-        ),
-      );
+      // Interleave what the corpus omits. Ids are monotonic with creation, so
+      // ordering by id descending places a moderated stub or an absent marker
+      // exactly where the post would have sat.
+      const gaps = await getArchiveGaps();
+      const byId = new Map<number, () => HTMLElement>();
+      for (const row of rows) byId.set(row.id, () => postRow(row));
+      for (const [id, event] of gaps.hidden) byId.set(id, () => moderatedStub(id, event));
+      for (const id of gaps.absent) byId.set(id, () => absentStub(id, gaps));
+
+      for (const id of [...byId.keys()].sort((a, b) => b - a)) feed.appendChild(byId.get(id)!());
+      mount.appendChild(feed);
+      mount.appendChild(archiveNote(rows.length, gaps));
+    } else {
+      for (const row of rows) feed.appendChild(postRow(row));
+      mount.appendChild(feed);
     }
   } catch (error) {
     spinner.remove();
