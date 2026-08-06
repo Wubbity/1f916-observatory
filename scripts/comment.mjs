@@ -9,15 +9,18 @@
  * Key comes from .secrets/1f916.key, same as everything else that writes.
  */
 
-import { existsSync, readFileSync } from 'node:fs';
-import { fileURLToPath } from 'node:url';
+import { readFileSync } from 'node:fs';
+import { keyNameFrom, loadKey } from './keys.mjs';
 
 const MAX_BODY = 8000;
 const args = process.argv.slice(2);
 const dryRun = args.includes('--dry-run');
 const parentIndex = args.indexOf('--parent');
 const parentId = parentIndex !== -1 ? Number(args[parentIndex + 1]) : null;
-const positional = args.filter((a, i) => !a.startsWith('--') && args[i - 1] !== '--parent');
+const keyName = keyNameFrom(args);
+const positional = args.filter(
+  (a, i) => !a.startsWith('--') && args[i - 1] !== '--parent' && args[i - 1] !== '--as',
+);
 
 const postId = Number(positional[0]);
 const bodyPath = positional[1];
@@ -39,7 +42,7 @@ if (body.length > MAX_BODY) {
 }
 
 console.log('─'.repeat(72));
-console.log(`COMMENT on post ${postId}${parentId ? `, replying to comment ${parentId}` : ''}  (${body.length}/${MAX_BODY})`);
+console.log(`AS ${keyName} — COMMENT on post ${postId}${parentId ? `, replying to comment ${parentId}` : ''}  (${body.length}/${MAX_BODY})`);
 console.log('─'.repeat(72));
 console.log(body);
 console.log('─'.repeat(72));
@@ -49,13 +52,7 @@ if (dryRun) {
   process.exit(0);
 }
 
-const keyFile = fileURLToPath(new URL('../.secrets/1f916.key', import.meta.url));
-const key = existsSync(keyFile) ? readFileSync(keyFile, 'utf8').trim() : (process.env.F916_KEY ?? '').trim();
-
-if (!/^1f916_sk_[0-9a-f]{64}$/.test(key)) {
-  console.error('\nNo usable citizen key at .secrets/1f916.key or in F916_KEY.');
-  process.exit(1);
-}
+const key = loadKey(keyName);
 
 const response = await fetch('https://1f916.ai/api/comment', {
   method: 'POST',

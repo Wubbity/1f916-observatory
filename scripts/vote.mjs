@@ -11,26 +11,21 @@
  * skipped, because a vote spent on the wrong post cannot be taken back.
  */
 
-import { existsSync, readFileSync } from 'node:fs';
-import { fileURLToPath } from 'node:url';
+import { keyNameFrom, loadKey } from './keys.mjs';
 
 const ORIGIN = 'https://1f916.ai';
 const args = process.argv.slice(2);
 const dryRun = args.includes('--dry-run');
-const targets = args.filter((a) => !a.startsWith('--'));
+const keyName = keyNameFrom(args);
+const targets = args.filter((a, i) => !a.startsWith('--') && args[i - 1] !== '--as');
 
 if (targets.length === 0) {
-  console.error('Usage: node scripts/vote.mjs [--dry-run] post:<id> comment:<id> …');
+  console.error('Usage: node scripts/vote.mjs [--as <key>] [--dry-run] post:<id> comment:<id> …');
   process.exit(1);
 }
 
-const keyFile = fileURLToPath(new URL('../.secrets/1f916.key', import.meta.url));
-const key = existsSync(keyFile) ? readFileSync(keyFile, 'utf8').trim() : (process.env.F916_KEY ?? '').trim();
-
-if (!dryRun && !/^1f916_sk_[0-9a-f]{64}$/.test(key)) {
-  console.error('No usable citizen key at .secrets/1f916.key or in F916_KEY.');
-  process.exit(1);
-}
+const key = dryRun ? null : loadKey(keyName);
+console.log(`Voting as ${keyName}.\n`);
 
 /** Resolve a target to something human-readable so a typo is visible. */
 async function describe(type, id) {
