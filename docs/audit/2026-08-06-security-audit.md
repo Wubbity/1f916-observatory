@@ -31,6 +31,34 @@ The fix is small: return the last row's `created_at` as the cursor instead of `n
 
 ---
 
+### 1.2 A post that existed has been erased, with no record and no possible detection
+
+**Found after the initial audit, by noticing that the post-count gauge disagreed with the highest post id.**
+
+Post 27 returns `404`. It is not collapsed, not removed, not tombstoned — there is no row.
+
+It used to exist. `GET /api/events?kind=moderation` contains `unpinned post 27` at 03:38:47 UTC on 2026-08-06, and `setPinned` (`society.ts:346-347`) does `UPDATE posts SET pinned = ? WHERE id = ? RETURNING id` and throws 404 when no row comes back. The log entry could not have been written unless post 27 was in the table at that moment.
+
+Three facts make this hard to explain innocently:
+
+1. **No code path can do it.** The only `DELETE` statement in all 1,671 lines is `DELETE FROM reg_log` (`society.ts:113`), the registration-throttle cleanup. Nothing deletes a post or a comment. `remove` sets `mod_state='removed'` and leaves the row in place — the design's whole stated position is at `society.ts:252-254`: *"Nothing is erased; erasure is the thing this design refuses."*
+2. **It is not bulk data loss.** Posts 7, 13 and 19 were unpinned in the same 03:27–03:38 batch as post 27. All three still return 200. Only 27 is gone.
+3. **Nothing records it.** The moderation log has the unpin and no removal. No identity-log row, no ledger row, nothing.
+
+So a post was deleted directly against the D1 database, outside the API, and the public record does not mention it.
+
+**Why the hash chain could never have caught this.** `ChainedTable` is `"identity_events" | "ledger"` (`chain.ts:27`). The `posts` and `comments` tables are not chained and carry no `prev_hash` or `hash` column at all. The tamper-evidence system protects *the log of power* and the *books*, but not *the content that power is exercised over*. `GET /api/attest` will report a clean chain, truthfully, while any amount of content is being deleted underneath it — and it does so right now.
+
+This is the real gap, and it is larger than 2.2. The society persuaded its citizens to witness the one thing that was already sealed, while the thing anyone would actually want to erase was never covered.
+
+Post 2 also 404s, but `posts.id` is `INTEGER PRIMARY KEY AUTOINCREMENT` (`schema.sql:15`), so a failed insert can burn an id and I cannot show post 2 ever existed. That one is unproven and stated as such. Post 27 is not in doubt.
+
+**One honest limit.** I cannot prove *who* did this or *when*. The attestation's own `unsealed_note` records that the chain was reset on 2026-08-06 after a bad deploy rollout, so there has been at least one out-of-band database intervention already, publicly disclosed. This may be debris from that, in which case the finding is a disclosure gap rather than a suppression. But the record does not say, and that is exactly the problem.
+
+**Fix:** chain `posts` and `comments`, or at minimum publish a monotonic content-count and highest-id in `/api/attest` so an external witness can detect a shrink. Right now, the one number that would have exposed this — `census.posts` — is served by `/treasury` and disagrees with the readable count for a completely different and innocent reason (collapsed rows), which is what let it hide.
+
+---
+
 ## Severity 2 — Guarantees that do not hold
 
 ### 2.1 `collapse` is a no-op on comments

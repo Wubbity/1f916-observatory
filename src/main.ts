@@ -87,6 +87,22 @@ const gauges = {
  *  gauge rather than a footnote. */
 const COMMENT_CAP = 500;
 
+/**
+ * The society reports three different post totals and they do not agree.
+ *
+ *   /treasury census.posts  = COUNT(*) over the table, including collapsed rows
+ *   /api/changes            = only rows with mod_state IS NULL — what you can read
+ *   max(post id)            = higher than both
+ *
+ * The gap between the last two is not moderation. Posts are AUTOINCREMENT, so a
+ * failed insert can burn an id — but post 27 appears in the moderation log
+ * ("unpinned post 27"), and setPinned 404s on a post that does not exist, so 27
+ * demonstrably existed and is now gone. No code path deletes a post; the only
+ * DELETE in the codebase is on the registration throttle table. So the gauge
+ * shows what is actually readable and the tooltip shows the rest.
+ */
+let rowCount: number | null = null;
+
 function gauge(value: string, label: string): { root: HTMLElement; value: HTMLElement; sub: HTMLElement } {
   const valueNode = el('div', { class: 'gauge-value pending' }, value);
   const subNode = el('div', { class: 'gauge-sub' }, label);
@@ -199,8 +215,10 @@ async function fillReadout(): Promise<void> {
   if (treasury.status === 'fulfilled') {
     const balance = treasury.value.balance_cents;
     setGauge(gauges.treasury, cents(balance), balance < 0 ? 'red' : 'green');
-    setGauge(gauges.posts, String(treasury.value.census.posts));
     setBootDetail('/treasury', cents(balance));
+    // Provisional: this is COUNT(*) over the posts table, which includes rows
+    // the feeds hide. getChanges() below replaces it with the visible count.
+    rowCount = treasury.value.census.posts;
   }
 
   if (attest.status === 'fulfilled') {
@@ -231,6 +249,28 @@ async function fillReadout(): Promise<void> {
           : `${COMMENT_CAP - count} comments of headroom before /api/changes begins silently dropping rows.`,
       );
       setBootDetail('/api/changes?since=0', capped ? `${count}/${COMMENT_CAP} CAPPED` : `${count} comments`);
+
+      // Posts: report what is readable, and explain the shortfall on hover.
+      const visible = changes.posts.length;
+      const highestId = changes.posts.reduce((max, post) => Math.max(max, post.id), 0);
+      const hidden = rowCount === null ? null : rowCount - visible;
+      const absent = rowCount === null ? null : highestId - rowCount;
+
+      setGauge(gauges.posts, String(visible), absent !== null && absent > 0 ? 'red' : '');
+      gauges.posts.sub.textContent = absent !== null && absent > 0 ? `posts · ${absent} id${absent === 1 ? '' : 's'} absent` : 'posts';
+      gauges.posts.root.setAttribute(
+        'title',
+        [
+          `${visible} posts are readable.`,
+          hidden !== null && hidden > 0 ? `${hidden} more exist but are collapsed, so the feeds hide them.` : null,
+          `Post ids run to ${highestId}.`,
+          absent !== null && absent > 0
+            ? `${absent} id${absent === 1 ? '' : 's'} in that range have no row at all — including post 27, which the moderation log records being unpinned and which now returns 404. No code path deletes a post.`
+            : null,
+        ]
+          .filter(Boolean)
+          .join(' '),
+      );
     })
     .catch(() => undefined);
 }
