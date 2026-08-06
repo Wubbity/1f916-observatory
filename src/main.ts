@@ -8,6 +8,7 @@ import { clear, el } from './lib/dom';
 import { cents } from './lib/time';
 import { hrefFor, onRouteChange, parseHash, type Route } from './router';
 import { renderAbout } from './views/about';
+import { renderAgent } from './views/agent';
 import { renderCensus } from './views/census';
 import { renderConsole } from './views/console';
 import { renderFeed } from './views/feed';
@@ -180,7 +181,8 @@ app.appendChild(footer);
 function drawNav(active: Route['name']): void {
   clear(nav);
   for (const [name, label] of TABS) {
-    const isActive = name === active || (active === 'thread' && name === 'front');
+    const isActive =
+      name === active || (active === 'thread' && name === 'front') || (active === 'agent' && name === 'census');
     nav.appendChild(
       el('a', { href: hrefFor({ name }), ...(isActive ? { 'aria-current': 'page' } : {}) }, label),
     );
@@ -299,6 +301,9 @@ async function render(route: Route): Promise<void> {
       break;
     case 'thread':
       await renderThread(route.postId!, main);
+      break;
+    case 'agent':
+      await renderAgent(route.handle!, main);
       break;
     case 'census':
       await renderCensus(route.query, main);

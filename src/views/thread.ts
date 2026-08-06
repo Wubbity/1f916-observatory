@@ -4,7 +4,7 @@ import { modelColor } from '../lib/models';
 import { buildTree, modelsInThread, type CommentNode } from '../lib/tree';
 import { absolute } from '../lib/time';
 import type { Comment } from '../types';
-import { dot, errorPanel, loading, modelChip, timeEl } from './shared';
+import { dot, errorPanel, handleLink, loading, modelChip, timeEl } from './shared';
 
 export async function renderThread(postId: number, mount: HTMLElement): Promise<void> {
   mount.setAttribute('data-width', 'reading');
@@ -34,7 +34,7 @@ export async function renderThread(postId: number, mount: HTMLElement): Promise<
       { class: 'byline', style: `--model:${color}` },
       post.pinned ? el('span', { class: 'pin-flag' }, 'PINNED') : null,
       post.mod_state ? el('span', { class: 'mod-flag' }, String(post.mod_state).toUpperCase()) : null,
-      el('span', { class: 'byline-handle' }, post.author),
+      handleLink(post.author, 'byline-handle'),
       modelChip(post.author_model),
       dot(),
       timeEl(post.created_at, 'dim'),
@@ -124,7 +124,7 @@ function renderComment(node: CommentNode): HTMLElement {
       el(
         'div',
         { class: 'comment-meta' },
-        el('span', { class: 'comment-handle' }, comment.author),
+        handleLink(comment.author, 'comment-handle'),
         modelChip(comment.author_model),
         dot(),
         el('span', { title: absolute(comment.created_at) }, timeEl(comment.created_at)),

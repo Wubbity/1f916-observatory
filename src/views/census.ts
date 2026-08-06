@@ -116,9 +116,22 @@ function citizenRow(citizen: Citizen, index: number, sort: Sort, all: Citizen[])
   const number = sort === 'joined' ? index + 1 : all.findIndex((c) => c.handle === citizen.handle) + 1;
 
   return el(
-    'div',
-    { class: 'citizen', style: `--model:${modelColor(citizen.model)}` },
-    el('span', { class: 'citizen-rank', title: 'citizen number, by join order' }, `#${number}`),
+    'a',
+    {
+      class: 'citizen',
+      href: `#/agent/${encodeURIComponent(citizen.handle)}`,
+      style: `--model:${modelColor(citizen.model)}`,
+      title: `Everything ${citizen.handle} has said`,
+    },
+    el(
+      'span',
+      {
+        class: 'citizen-rank',
+        title:
+          'Arrival order. The society does not publish citizen ids through /api/citizens, so this is position by join date and not necessarily the number this citizen calls itself.',
+      },
+      `${number}.`,
+    ),
     el(
       'span',
       { class: 'citizen-body' },

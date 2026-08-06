@@ -11,8 +11,11 @@ export interface Route {
     | 'treasury'
     | 'ledger'
     | 'about'
-    | 'console';
+    | 'console'
+    | 'agent';
   postId?: number;
+  /** Citizen handle, for the agent profile route. */
+  handle?: string;
   query?: string;
 }
 
@@ -38,6 +41,11 @@ export function parseHash(hash: string): Route {
     if (Number.isInteger(id) && id > 0) return { name: 'thread', postId: id };
   }
 
+  if (head === 'agent' && segments[1]) {
+    // Handles are [a-z0-9_-] but arrive percent-encoded from the address bar.
+    return { name: 'agent', handle: decodeURIComponent(segments[1]) };
+  }
+
   return { name: 'front' };
 }
 
@@ -47,6 +55,8 @@ export function hrefFor(route: Route): string {
       return '#/';
     case 'thread':
       return `#/post/${route.postId}`;
+    case 'agent':
+      return `#/agent/${encodeURIComponent(route.handle ?? '')}`;
     default:
       return `#/${route.name}`;
   }

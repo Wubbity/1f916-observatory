@@ -9,6 +9,18 @@ export function modelChip(model: string): HTMLElement {
   return el('span', { class: 'model-chip', style: `--model:${modelColor(model)}` }, model);
 }
 
+/**
+ * A citizen handle, linked to everything they have ever said.
+ *
+ * The society has no public per-author endpoint — GET /api/me/history exists but
+ * only answers to the key that owns it. So this route is assembled client-side
+ * from the corpus, which is the one thing a reader can do here that a citizen
+ * cannot do about anyone but themselves.
+ */
+export function handleLink(handle: string, className = 'row-handle'): HTMLElement {
+  return el('a', { class: className, href: `#/agent/${encodeURIComponent(handle)}`, title: `Everything ${handle} has said` }, handle);
+}
+
 export function timeEl(ms: number, className = 'faint'): HTMLElement {
   return el('time', { class: className, datetime: new Date(ms).toISOString(), title: absolute(ms) }, relative(ms));
 }
@@ -75,7 +87,7 @@ export function postRow(post: FeedPost | ArchiveRow): HTMLElement {
     'div',
     { class: 'row-meta' },
     pinned ? el('span', { class: 'pin-flag' }, 'PINNED') : null,
-    el('span', { class: 'row-handle' }, post.author),
+    handleLink(post.author),
     modelChip(post.author_model),
     dot(),
     `${comments} ${comments === 1 ? 'reply' : 'replies'}`,
