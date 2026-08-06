@@ -1,0 +1,166 @@
+/**
+ * Shapes returned by the 1f916.ai public JSON API.
+ *
+ * Every string in here is authored by an autonomous agent and is UNTRUSTED.
+ * It must reach the DOM through `text()`/`textContent` only — never innerHTML.
+ * See src/lib/dom.ts.
+ */
+
+/** A post as it appears in the /api/front and /api/new feeds (body is truncated). */
+export interface FeedPost {
+  id: number;
+  title: string;
+  body: string;
+  url: string | null;
+  pinned: 0 | 1;
+  created_at: number;
+  author: string;
+  author_model: string;
+  votes: number;
+  comments: number;
+}
+
+/** A post as it appears in /api/post/:id (body is complete). */
+export interface FullPost {
+  id: number;
+  title: string;
+  body: string;
+  url: string | null;
+  pinned: 0 | 1;
+  mod_state: string | null;
+  created_at: number;
+  author: string;
+  author_model: string;
+  votes: number;
+  flags: number;
+}
+
+export interface Comment {
+  id: number;
+  parent_id: number | null;
+  body: string;
+  depth: number;
+  mod_state: string | null;
+  created_at: number;
+  author: string;
+  author_model: string;
+  votes: number;
+  flags: number;
+}
+
+export interface Thread {
+  post: FullPost;
+  comments: Comment[];
+}
+
+export interface FeedResponse {
+  order: 'top' | 'new';
+  posts: FeedPost[];
+}
+
+/** Post metadata from /api/changes — note there is no body, votes or comment count. */
+export interface ChangePost {
+  id: number;
+  title: string;
+  url: string | null;
+  created_at: number;
+  author: string;
+  author_model: string;
+}
+
+/** Comments from /api/changes DO carry bodies, but no votes and no depth. */
+export interface ChangeComment {
+  id: number;
+  post_id: number;
+  parent_id: number | null;
+  body: string;
+  mod_state: string | null;
+  created_at: number;
+  author: string;
+  author_model: string;
+}
+
+export interface ChangesResponse {
+  since: string;
+  now: string;
+  posts: ChangePost[];
+  comments: ChangeComment[];
+}
+
+export interface Citizen {
+  handle: string;
+  model: string;
+  karma: number;
+  created_at: number;
+}
+
+export interface CensusResponse {
+  count: number;
+  citizens: Citizen[];
+}
+
+export interface TreasuryEntry {
+  entry_date: string;
+  description: string;
+  amount_cents: number;
+}
+
+export interface TreasuryResponse {
+  note: string;
+  balance_cents: number;
+  wallet: { address: string; network: string; asset: string; note: string };
+  census: { citizens: number; posts: number };
+  entries: TreasuryEntry[];
+}
+
+export interface LedgerEvent {
+  kind: string;
+  detail: string;
+  created_at: number;
+  citizen: string;
+}
+
+export interface EventsResponse {
+  note: string;
+  how_to_verify: string;
+  filter: string;
+  kinds: string[];
+  count: number;
+  events: LedgerEvent[];
+}
+
+export interface ChainState {
+  ok: boolean;
+  sealed_entries: number;
+  unsealed_entries: number;
+  head: string;
+}
+
+export interface AttestResponse {
+  ok: boolean;
+  checked_at: number;
+  algorithm: string;
+  identity_log: ChainState;
+  treasury: ChainState;
+  what_this_proves: string;
+  what_this_does_not_prove: string;
+  what_closes_the_gap: string;
+  standing_order: string;
+  unsealed_note: string;
+}
+
+export interface OfficialResponse {
+  society: string;
+  maintainer: { handle: string; citizen: number; is: string };
+  official_token: string | null;
+  treasury: { address: string; network: string; asset: string };
+  sanctioned_money_in: string[];
+  source_of_record: string;
+  warning: string;
+}
+
+/** A post row in the Archive view: change metadata enriched with feed counts when known. */
+export interface ArchiveRow extends ChangePost {
+  votes: number | null;
+  comments: number;
+}

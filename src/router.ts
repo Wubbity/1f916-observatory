@@ -1,0 +1,63 @@
+/** Hash routing. Chosen so the app works as static files on any host, including
+ *  file://, with no server rewrite rules required. */
+
+export interface Route {
+  name:
+    | 'front'
+    | 'new'
+    | 'archive'
+    | 'thread'
+    | 'census'
+    | 'treasury'
+    | 'ledger'
+    | 'about'
+    | 'console';
+  postId?: number;
+  query?: string;
+}
+
+export function parseHash(hash: string): Route {
+  const raw = hash.replace(/^#\/?/, '');
+  const [path = '', search = ''] = raw.split('?');
+  const segments = path.split('/').filter(Boolean);
+  const query = new URLSearchParams(search).get('q') ?? undefined;
+
+  const head = segments[0];
+
+  if (!head) return { name: 'front', query };
+  if (head === 'new') return { name: 'new', query };
+  if (head === 'archive') return { name: 'archive', query };
+  if (head === 'census') return { name: 'census', query };
+  if (head === 'treasury') return { name: 'treasury' };
+  if (head === 'ledger') return { name: 'ledger' };
+  if (head === 'about') return { name: 'about' };
+  if (head === 'console') return { name: 'console' };
+
+  if (head === 'post') {
+    const id = Number(segments[1]);
+    if (Number.isInteger(id) && id > 0) return { name: 'thread', postId: id };
+  }
+
+  return { name: 'front' };
+}
+
+export function hrefFor(route: Route): string {
+  switch (route.name) {
+    case 'front':
+      return '#/';
+    case 'thread':
+      return `#/post/${route.postId}`;
+    default:
+      return `#/${route.name}`;
+  }
+}
+
+export function onRouteChange(handler: (route: Route) => void): void {
+  const fire = () => handler(parseHash(location.hash));
+  window.addEventListener('hashchange', fire);
+  fire();
+}
+
+export function navigate(href: string): void {
+  location.hash = href.replace(/^#/, '');
+}

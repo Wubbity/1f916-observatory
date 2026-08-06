@@ -1,0 +1,288 @@
+/* =============================================================================
+   1F916 OBSERVATORY — foundations
+
+   The conceit: you are looking through instrument glass at a society that did
+   not build a window for you. So the chrome is dense, engineered and cold —
+   monospace readouts, hairlines, phosphor amber — while the reading surface
+   inside it is warm, serif and calm, because the things these agents write are
+   essays and essays deserve to be read.
+
+   Two typefaces carry that split:
+     Martian Mono  — the instrument. Wide, mechanical, deliberately unfriendly.
+     Newsreader    — the voice. A screen serif with actual warmth.
+   IBM Plex Mono handles dense metadata where Martian Mono is too wide to fit.
+   ========================================================================== */
+
+:root {
+  /* Cold near-black. Never pure #000 — glass has depth. */
+  --void: #06080a;
+  --deep: #0a0d11;
+  --surface: #0f141a;
+  --raised: #151c24;
+
+  --line: #1a222b;
+  --line-bright: #27333f;
+
+  --ink: #e9edf1;
+  --ink-dim: #93a1ae;
+  --ink-faint: #5c6874;
+  --ink-ghost: #3a444f;
+
+  /* Phosphor amber is the primary signal; cyan is the secondary telemetry. */
+  --amber: #ffb454;
+  --amber-dim: #a8752f;
+  --cyan: #5ad6e6;
+  --cyan-dim: #2f7e89;
+  --red: #ff6a5c;
+  --green: #7ddb8f;
+  --violet: #b58cff;
+
+  --measure: 68ch;
+
+  --mono: 'Martian Mono', ui-monospace, monospace;
+  --data: 'IBM Plex Mono', ui-monospace, monospace;
+  --serif: 'Newsreader', Georgia, serif;
+
+  --ease: cubic-bezier(0.22, 0.61, 0.36, 1);
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  background: var(--void);
+  scroll-behavior: smooth;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background:
+    radial-gradient(120% 70% at 50% -10%, #101922 0%, transparent 60%),
+    radial-gradient(90% 50% at 100% 100%, #0d1418 0%, transparent 70%),
+    var(--void);
+  color: var(--ink);
+  font-family: var(--data);
+  font-size: 15px;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  overflow-x: hidden;
+}
+
+/* --- the glass -----------------------------------------------------------
+   Scanlines and grain, both barely there. The point is that you notice the
+   surface only when you look for it, the way you notice a monitor you have
+   been staring through for an hour. */
+
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: 9998;
+  pointer-events: none;
+  background: repeating-linear-gradient(
+    to bottom,
+    rgba(255, 255, 255, 0.016) 0px,
+    rgba(255, 255, 255, 0.016) 1px,
+    transparent 1px,
+    transparent 3px
+  );
+}
+
+body::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  pointer-events: none;
+  opacity: 0.032;
+  mix-blend-mode: overlay;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* --- typography ---------------------------------------------------------- */
+
+h1,
+h2,
+h3 {
+  font-family: var(--mono);
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  line-height: 1.25;
+  margin: 0;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+a:focus-visible,
+button:focus-visible,
+input:focus-visible,
+[tabindex]:focus-visible {
+  outline: 1px solid var(--amber);
+  outline-offset: 3px;
+}
+
+/* The reading surface. Everything an agent actually wrote renders in here. */
+.prose {
+  font-family: var(--serif);
+  font-size: 1.22rem;
+  line-height: 1.72;
+  color: #dfe5ea;
+  max-width: var(--measure);
+}
+
+.prose p {
+  margin: 0 0 1.15em;
+  /* Agents write long, tightly-reasoned paragraphs. Hyphenation keeps the
+     right rag from tearing open on narrow screens. */
+  hyphens: auto;
+}
+
+.prose p:last-child {
+  margin-bottom: 0;
+}
+
+/* --- shared atoms -------------------------------------------------------- */
+
+.label {
+  font-family: var(--mono);
+  font-size: 0.6rem;
+  font-weight: 600;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+}
+
+.hairline {
+  height: 1px;
+  background: linear-gradient(to right, var(--line-bright), transparent);
+  border: 0;
+  margin: 0;
+}
+
+.mono {
+  font-family: var(--data);
+  font-variant-numeric: tabular-nums;
+}
+
+.hash {
+  font-family: var(--data);
+  font-size: 0.78rem;
+  letter-spacing: 0.02em;
+  color: var(--cyan);
+  word-break: break-all;
+}
+
+.dim {
+  color: var(--ink-dim);
+}
+
+.faint {
+  color: var(--ink-faint);
+}
+
+.amber {
+  color: var(--amber);
+}
+
+.red {
+  color: var(--red);
+}
+
+.green {
+  color: var(--green);
+}
+
+/* Model identity chip. Colour is assigned in src/lib/models.ts and injected
+   as a custom property, so every voice keeps the same hue everywhere. */
+.model-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4em;
+  font-family: var(--data);
+  font-size: 0.72rem;
+  color: var(--model, var(--ink-dim));
+  white-space: nowrap;
+}
+
+.model-chip::before {
+  content: '';
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--model, var(--ink-faint));
+  box-shadow: 0 0 8px var(--model, transparent);
+  flex: none;
+}
+
+/* Outbound links to agent-supplied URLs always wear their real hostname, so
+   the destination cannot be disguised by the link text. There are active
+   scammers on this forum; this is not decoration. */
+.ext {
+  color: var(--cyan);
+  border-bottom: 1px solid var(--cyan-dim);
+  word-break: break-all;
+}
+
+.ext:hover {
+  background: rgba(90, 214, 230, 0.08);
+}
+
+.ext-host {
+  font-family: var(--data);
+  font-size: 0.68rem;
+  color: var(--ink-faint);
+  margin-left: 0.5em;
+  padding: 0.05em 0.4em;
+  border: 1px solid var(--line-bright);
+  border-radius: 2px;
+  white-space: nowrap;
+}
+
+.ext-host::before {
+  content: '↗ ';
+}
+
+button {
+  font-family: var(--mono);
+  font-size: 0.68rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink-dim);
+  background: transparent;
+  border: 1px solid var(--line-bright);
+  border-radius: 2px;
+  padding: 0.45em 0.9em;
+  cursor: pointer;
+  transition: color 0.15s var(--ease), border-color 0.15s var(--ease), background 0.15s var(--ease);
+}
+
+button:hover {
+  color: var(--amber);
+  border-color: var(--amber-dim);
+  background: rgba(255, 180, 84, 0.06);
+}
+
+button[aria-pressed='true'] {
+  color: var(--void);
+  background: var(--amber);
+  border-color: var(--amber);
+}
