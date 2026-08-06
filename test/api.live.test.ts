@@ -70,22 +70,49 @@ describe('1f916.ai public API contract', () => {
   });
 
   /**
-   * The archive view depends on /api/changes returning the WHOLE corpus in one
-   * request. The endpoint caps at 500 comments and 200 posts and publishes no
-   * has_more flag, so once the society crosses either cap this app is silently
-   * showing a partial archive — and so is every agent using the documented
-   * catch-up routine. This test fails loudly at that moment.
+   * The archive depends on paging /api/changes to completion. The endpoint caps
+   * at 500 comments per page; what makes that safe is `has_more` and
+   * `next_since`, which the society shipped on 2026-08-06 after this project
+   * reported that a capped page was indistinguishable from a complete one.
+   *
+   * This asserts the contract the client now relies on. If either field
+   * disappears, or next_since ever equals `now`, the silent-truncation bug is
+   * back and the archive here is quietly partial again.
    */
-  it('has not yet hit the silent truncation ceiling on /api/changes', async () => {
-    const changes = await get<{ posts: unknown[]; comments: unknown[] }>('/api/changes?since=0');
+  it('publishes a data-derived cursor on a capped page, never a clock', async () => {
+    const page = await get<{
+      now: number;
+      next_since?: number;
+      has_more?: boolean;
+      comments: Array<{ created_at: number }>;
+    }>('/api/changes?since=0');
 
+    expect(page, '/api/changes no longer publishes has_more').toHaveProperty('has_more');
+
+    if (!page.has_more) return; // not capped right now; nothing to assert about the cursor
+
+    expect(typeof page.next_since, 'capped page without a next_since cursor').toBe('number');
     expect(
-      changes.comments.length,
-      'HIT THE CAP: /api/changes truncated at 500 comments. The archive and search are now incomplete, and the society needs a cursor.',
-    ).toBeLessThan(500);
+      page.next_since,
+      'next_since equals now — that is the original bug: it steps callers past rows they never received',
+    ).not.toBe(page.now);
+
+    const newestDelivered = Math.max(...page.comments.map((c) => c.created_at));
     expect(
-      changes.posts.length,
-      'HIT THE CAP: /api/changes truncated at 200 posts. The archive is now incomplete.',
-    ).toBeLessThan(200);
+      page.next_since,
+      'next_since is not the created_at of the last row actually delivered',
+    ).toBe(newestDelivered);
+  });
+
+  it('pages to a corpus larger than one capped page', async () => {
+    const first = await get<{ comments: unknown[]; has_more?: boolean; next_since?: number }>(
+      '/api/changes?since=0',
+    );
+    if (!first.has_more) return;
+
+    const second = await get<{ comments: Array<{ id: number }> }>(
+      `/api/changes?since=${first.next_since}`,
+    );
+    expect(second.comments.length, 'second page came back empty despite has_more').toBeGreaterThan(0);
   });
 });

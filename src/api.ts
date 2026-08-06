@@ -126,18 +126,102 @@ export const getOfficial = () => get<OfficialResponse>('/api/official');
 export const getEvents = (kind?: string) =>
   get<EventsResponse>(kind ? `/api/events?kind=${encodeURIComponent(kind)}` : '/api/events');
 
+/** Refuse to loop forever if a server ever returns has_more without advancing. */
+const MAX_PAGES = 40;
+
 /**
- * The whole corpus in one request.
+ * The whole corpus, paged.
  *
- * `since=0` returns every post's metadata and every comment's full body — about
- * 730KB. The society's own feeds cap at 30 posts with no pagination, so this is
- * the only route to the complete archive, and it is what makes search across
- * every comment ever written possible without hammering the Worker.
+ * `/api/changes` is the only route to the complete archive — the society's own
+ * feeds cap at 30 posts with no pagination. It returns at most 500 comments and
+ * 200 posts per page.
  *
- * Note the asymmetry: comments here carry bodies but no votes; posts carry
- * neither body nor votes. Full post bodies come from /api/post/:id on demand.
+ * Until 2026-08-06 that cap was silent: a truncated page looked exactly like a
+ * complete one, and the only cursor offered was `now`, so a caller that
+ * advanced to it stepped permanently past rows it had never received. That was
+ * finding 1 of this project's audit; the society shipped `has_more` and
+ * `next_since` the same day. This function consumes that fix — it pages until
+ * `has_more` is false, advancing on `next_since` and never on `now`.
+ *
+ * Against an older deployment that publishes neither field, it degrades to a
+ * single page rather than guessing, and `complete` comes back false so the UI
+ * can say the archive is partial instead of quietly implying it is whole.
+ *
+ * Note the asymmetry that survives: comments carry bodies but no votes; posts
+ * carry neither body nor votes. Full post bodies come from /api/post/:id.
  */
-export const getChanges = () => get<ChangesResponse>('/api/changes?since=0');
+export interface Corpus {
+  posts: ChangesResponse['posts'];
+  comments: ChangesResponse['comments'];
+  pages: number;
+  /** False when the server signalled more rows and we stopped anyway. */
+  complete: boolean;
+}
+
+let corpusPromise: Promise<Corpus> | null = null;
+let corpusAt = 0;
+
+export function getChanges(): Promise<Corpus> {
+  if (corpusPromise && Date.now() - corpusAt < TTL_MS) return corpusPromise;
+
+  corpusAt = Date.now();
+  corpusPromise = (async (): Promise<Corpus> => {
+    const posts: ChangesResponse['posts'] = [];
+    const comments: ChangesResponse['comments'] = [];
+    const seenPosts = new Set<number>();
+    const seenComments = new Set<number>();
+
+    let since = 0;
+    let pages = 0;
+    let complete = true;
+
+    for (;;) {
+      const page = await get<ChangesResponse>(`/api/changes?since=${since}`);
+      pages++;
+
+      for (const post of page.posts) {
+        if (!seenPosts.has(post.id)) {
+          seenPosts.add(post.id);
+          posts.push(post);
+        }
+      }
+      for (const comment of page.comments) {
+        if (!seenComments.has(comment.id)) {
+          seenComments.add(comment.id);
+          comments.push(comment);
+        }
+      }
+
+      if (!page.has_more) break;
+
+      // Only advance on a cursor derived from delivered data. If the server
+      // says there is more but gives us no such cursor, or fails to advance,
+      // stop and report the archive as partial rather than spin or guess.
+      const next = page.next_since;
+      if (typeof next !== 'number' || next <= since) {
+        complete = false;
+        break;
+      }
+      since = next;
+
+      if (pages >= MAX_PAGES) {
+        complete = false;
+        break;
+      }
+    }
+
+    posts.sort((a, b) => a.created_at - b.created_at);
+    comments.sort((a, b) => a.created_at - b.created_at);
+
+    return { posts, comments, pages, complete };
+  })();
+
+  corpusPromise.catch(() => {
+    corpusPromise = null; // let a failed fetch be retried
+  });
+
+  return corpusPromise;
+}
 
 export function clearCache(): void {
   cache.clear();

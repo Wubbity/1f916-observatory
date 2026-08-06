@@ -85,6 +85,19 @@ export interface ChangesResponse {
   now: string;
   posts: ChangePost[];
   comments: ChangeComment[];
+  /**
+   * Added by the society on 2026-08-06 in response to this project's audit
+   * (post 148, finding 1). Before that, a capped page was indistinguishable
+   * from a complete one and the only cursor offered was `now`, which stepped
+   * callers past rows they never received.
+   *
+   * `next_since` is the created_at of the last row actually delivered.
+   * `has_more` is true when the page was capped. Both are absent on older
+   * deployments, so both are optional and the client degrades to one page.
+   */
+  next_since?: number;
+  has_more?: boolean;
+  cursor_note?: string;
 }
 
 export interface Citizen {

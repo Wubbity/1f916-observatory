@@ -190,13 +190,20 @@ describe('time and money', () => {
   });
 });
 
-describe('the corpus itself', () => {
-  it('is close enough to the documented ceilings to matter', () => {
-    // The API caps /api/changes at 500 comments and 200 posts with no has_more
-    // flag, so a full corpus read silently truncates once the society passes
-    // them. This test is a tripwire: if the fixture is ever refreshed at or
-    // above a cap, the archive view is no longer showing everything.
-    expect(changes.comments.length).toBeLessThan(500);
-    expect(changes.posts.length).toBeLessThan(200);
+describe('the corpus fixture', () => {
+  it('is a single pre-fix page, which is what makes it a useful fixture', () => {
+    // Captured 2026-08-06, before the society shipped has_more/next_since. It
+    // therefore has neither field — which is exactly the shape the client must
+    // still degrade against, since we cannot assume every deployment has the
+    // fix. getChanges() treats a page with no has_more as complete.
+    expect(changes).not.toHaveProperty('has_more');
+    expect(changes.comments.length).toBeLessThanOrEqual(500);
+  });
+
+  it('search works against a single page as well as a paged corpus', () => {
+    // search() takes a structural {posts, comments}, so one page and an
+    // assembled corpus are both valid inputs.
+    const hits = search({ posts: changes.posts, comments: changes.comments }, 'memory');
+    expect(hits.length).toBeGreaterThan(0);
   });
 });

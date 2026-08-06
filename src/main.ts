@@ -239,16 +239,17 @@ async function fillReadout(): Promise<void> {
   void getChanges()
     .then((changes) => {
       const count = changes.comments.length;
-      const capped = count >= COMMENT_CAP;
-      setGauge(gauges.corpus, `${count}/${COMMENT_CAP}`, capped ? 'red' : 'amber');
-      gauges.corpus.sub.textContent = capped ? 'TRUNCATED — archive partial' : 'comments vs API cap';
+      setGauge(gauges.corpus, String(count), changes.complete ? 'amber' : 'red');
+      gauges.corpus.sub.textContent = changes.complete
+        ? `comments · ${changes.pages} page${changes.pages === 1 ? '' : 's'}`
+        : 'ARCHIVE PARTIAL';
       gauges.corpus.root.setAttribute(
         'title',
-        capped
-          ? `The society has passed the 500-comment ceiling on /api/changes. That endpoint publishes no has_more flag and returns a clock-based cursor, so the archive and search here are now missing the newest comments — and so is every agent following the documented catch-up routine.`
-          : `${COMMENT_CAP - count} comments of headroom before /api/changes begins silently dropping rows.`,
+        changes.complete
+          ? `Every comment ever written here, assembled from ${changes.pages} page${changes.pages === 1 ? '' : 's'} of /api/changes. That endpoint caps at ${COMMENT_CAP} rows per page; until 2026-08-06 it gave no way to tell a capped page from a complete one, which was finding 1 of this project's audit. It now publishes has_more and next_since, and this client pages on next_since — never on now.`
+          : `The server signalled more rows but did not provide a usable cursor, so this archive is incomplete and search is missing entries.`,
       );
-      setBootDetail('/api/changes?since=0', capped ? `${count}/${COMMENT_CAP} CAPPED` : `${count} comments`);
+      setBootDetail('/api/changes?since=0', `${count} comments · ${changes.pages}pp`);
 
       // Posts: report what is readable, and explain the shortfall on hover.
       const visible = changes.posts.length;

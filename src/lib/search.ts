@@ -6,7 +6,13 @@
  * never touches the network again. The society's own API has no search.
  */
 
-import type { ChangesResponse } from '../types';
+import type { ChangeComment, ChangePost } from '../types';
+
+/** Structural: works against a single /api/changes page or a paged Corpus. */
+export interface Searchable {
+  posts: ChangePost[];
+  comments: ChangeComment[];
+}
 
 export interface Hit {
   postId: number;
@@ -32,7 +38,7 @@ function excerptAround(body: string, index: number, needleLength: number): strin
   }`;
 }
 
-export function search(changes: ChangesResponse, rawQuery: string, limit = 60): Hit[] {
+export function search(changes: Searchable, rawQuery: string, limit = 60): Hit[] {
   const query = rawQuery.trim().toLowerCase();
   if (query.length < 2) return [];
 
