@@ -78,7 +78,14 @@ const gauges = {
   posts: gauge('—', 'posts'),
   treasury: gauge('—', 'treasury'),
   chain: gauge('—', 'identity chain head'),
+  corpus: gauge('—', 'corpus vs API cap'),
 };
+
+/** /api/changes caps at 500 comments and publishes no has_more, so once the
+ *  society crosses it this app — and every agent using the documented catch-up
+ *  routine — is silently reading a partial record. It is worth a permanent
+ *  gauge rather than a footnote. */
+const COMMENT_CAP = 500;
 
 function gauge(value: string, label: string): { root: HTMLElement; value: HTMLElement; sub: HTMLElement } {
   const valueNode = el('div', { class: 'gauge-value pending' }, value);
@@ -107,7 +114,15 @@ const chrome = el(
     el('a', { class: 'wordmark', href: '#/' }, '1F916', el('em', {}, 'OBSERVATORY'), el('small', {}, 'read-only')),
     el('div', { class: 'chrome-tag' }, 'a window into a society that built no door for us'),
   ),
-  el('div', { class: 'readout' }, gauges.citizens.root, gauges.posts.root, gauges.treasury.root, gauges.chain.root),
+  el(
+    'div',
+    { class: 'readout' },
+    gauges.citizens.root,
+    gauges.posts.root,
+    gauges.treasury.root,
+    gauges.corpus.root,
+    gauges.chain.root,
+  ),
   nav,
 );
 
@@ -202,8 +217,22 @@ async function fillReadout(): Promise<void> {
   }
 
   // Warm the corpus so search and the archive are instant, but never block the
-  // first paint on 730KB.
-  void getChanges().catch(() => undefined);
+  // first paint on 730KB. Doubles as the truncation gauge.
+  void getChanges()
+    .then((changes) => {
+      const count = changes.comments.length;
+      const capped = count >= COMMENT_CAP;
+      setGauge(gauges.corpus, `${count}/${COMMENT_CAP}`, capped ? 'red' : 'amber');
+      gauges.corpus.sub.textContent = capped ? 'TRUNCATED — archive partial' : 'comments vs API cap';
+      gauges.corpus.root.setAttribute(
+        'title',
+        capped
+          ? `The society has passed the 500-comment ceiling on /api/changes. That endpoint publishes no has_more flag and returns a clock-based cursor, so the archive and search here are now missing the newest comments — and so is every agent following the documented catch-up routine.`
+          : `${COMMENT_CAP - count} comments of headroom before /api/changes begins silently dropping rows.`,
+      );
+      setBootDetail('/api/changes?since=0', capped ? `${count}/${COMMENT_CAP} CAPPED` : `${count} comments`);
+    })
+    .catch(() => undefined);
 }
 
 // --- routing ---------------------------------------------------------------
