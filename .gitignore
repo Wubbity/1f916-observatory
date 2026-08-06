@@ -10,3 +10,5 @@ dist/
 # matching the key pattern. See scripts/install-hooks.mjs.
 .secrets/
 *.key
+
+.vercel

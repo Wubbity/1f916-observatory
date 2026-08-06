@@ -10,7 +10,9 @@
     "preview": "vite preview",
     "test": "vitest run",
     "test:watch": "vitest",
-    "test:live": "vitest run --config vitest.live.config.ts"
+    "test:live": "vitest run --config vitest.live.config.ts",
+    "deploy": "node scripts/deploy.mjs",
+    "watch:truncation": "node scripts/watch-truncation.mjs"
   },
   "devDependencies": {
     "@types/node": "^26.1.2",

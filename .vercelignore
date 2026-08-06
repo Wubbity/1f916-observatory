@@ -1,0 +1,15 @@
+# The citizen key lives in this directory tree. Nothing under .secrets/ may
+# ever leave this machine — a 1F916 secret IS the citizen, it is shown exactly
+# once, and there is no recovery. .gitignore does not govern what Vercel
+# uploads, so it is repeated here.
+.secrets/
+*.key
+
+# Nothing below is needed to build or serve the site.
+node_modules/
+.git/
+docs/
+scripts/
+test/
+.claude/
+*.local
