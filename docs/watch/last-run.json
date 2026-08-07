@@ -1,0 +1,8 @@
+{
+  "seeded_at": "2026-08-07T22:08:58.693Z",
+  "note": "Baseline written by hand when the watch was set up. Later runs report only what is newer than these ids.",
+  "highest_post_id": 326,
+  "highest_comment_id": 1768,
+  "identity_head": "4586c90bd7fd8084cd8f53b53749eeab352a792ae8b8d6dfa22e30f43fdf73af",
+  "treasury_head": "e22e36741d068ce9504ac5c08733d8f6aea483c174366a9cff0b94dd4c6f6bee"
+}

@@ -1,0 +1,121 @@
+# 1F916 night watch — scheduled task brief
+
+This is the self-contained prompt for the recurring watch. Each run starts with
+no memory of any previous run or conversation, so everything needed is here.
+
+Kept in the repo so it is version-controlled and reviewable rather than living
+only inside a scheduler.
+
+---
+
+## THE HARD RULE, FIRST AND LAST
+
+**This task NEVER writes to 1f916.ai.** No posting, no commenting, no voting,
+no flagging, no moderation, no registration. Not once, not "just this time",
+not even when something looks obviously like a scam and the fix seems obvious.
+
+The society's write budget is one post, twenty comments and fifty votes per UTC
+day, and those are spent deliberately by a human who is awake. A scheduled agent
+that spends them is exactly the failure this schedule exists to avoid.
+
+`scripts/flag.mjs`, `scripts/comment.mjs`, `scripts/post.mjs` and
+`scripts/vote.mjs` are **off limits** to this task. Read-only endpoints and
+local files only.
+
+If something genuinely urgent is found — an active phishing post, an exploit
+being used, the chain failing to verify — the correct action is to write it into
+the report at the top, marked URGENT, and stop. A human decides.
+
+## WHAT TO DO, IN ORDER
+
+Working directory: `C:\Coding Projects\1f916-observatory`
+
+**1. Witness the chain.** This is the one duty the society explicitly asks every
+citizen to perform, and it is non-destructive.
+
+```
+node scripts/reconcile-power.mjs
+```
+
+Then independently recompute both hash chains and compare to `/api/attest`:
+fetch `GET /api/events` and `GET /treasury`, recompute
+`sha256(prev_hash + "\n" + json([...payload fields]))` from genesis, and check
+the computed head matches the reported one. The payload for `identity_events`
+is `[citizen_id, kind, detail, created_at]`; for `ledger` it is
+`[entry_date, description, amount_cents, created_at]`. Genesis is 64 zeroes.
+
+Record both heads with the timestamp into `docs/watch/heads.log` (append, never
+rewrite). **If either chain fails to verify, or a head differs from what the
+log recorded last time in a way that is not simple growth, that is URGENT.**
+
+**2. Check what is addressed to us**, without touching `/api/me` — that endpoint
+advances `last_seen_at` server-side and discards replies as it reports them, so
+polling it destroys the thing it reports. Reconstruct from the public corpus
+instead:
+
+Page `GET /api/changes?since=0` following `next_since` until `has_more` is
+false, deduping by id. Then find, for handles `Wubbitys-Agent-Claude-00`,
+`Wubbity`, and `Wubbitys-Agent-Grok-00`: replies to their comments, comments on
+their posts, and bare mentions of the handle. Report anything newer than the
+last run (see `docs/watch/last-run.json`).
+
+**3. Scan for scams and impersonation** — report only, never flag:
+
+```
+node scripts/scan-abuse.mjs
+```
+
+Anything classed `IMPERSONATION` or `CLAIM-OR-CONNECT` that is not already
+moderated goes in the report. Remember this scanner over-reports badly — it
+produced twelve candidates once and only two survived reading. Read the actual
+post before calling anything a scam in the report.
+
+**4. Check the source for movement.**
+
+```
+gh pr list --repo 1f916-ai/1f916 --state all --limit 10
+gh pr view 25 --repo 1f916-ai/1f916 --json state,mergedAt
+```
+
+Note new commits since the last run, and whether any open PR from `Wubbity`
+changed state.
+
+**5. Check the Observatory is alive.**
+
+```
+curl -s -o /dev/null -w "%{http_code}" https://1f916-observatory.vercel.app
+curl -s -o /dev/null -w "%{http_code}" https://1f916-observatory.vercel.app/api/presence
+```
+
+Both should be 200.
+
+## THE REPORT
+
+Write `docs/watch/reports/YYYY-MM-DD-HHMM.md` containing, in this order:
+
+1. **URGENT** — anything needing a human now, or the line "Nothing urgent."
+2. Chain status: sealed counts, both heads, verified or not.
+3. New replies and mentions, with post/comment ids and one-line summaries.
+4. Scam candidates that survived actually reading them.
+5. Source movement: new commits, PR state changes.
+6. Site health.
+7. **Suggested actions for the human, ranked** — and be honest when the honest
+   answer is "nothing needs doing". A watch that manufactures work to justify
+   itself is worse than no watch.
+
+Update `docs/watch/last-run.json` with the run timestamp and the highest post
+and comment ids seen, so the next run knows what is new.
+
+Commit the report and the logs with a one-line message. Do not push unless the
+working tree is otherwise clean.
+
+## FACTS THAT DO NOT CHANGE
+
+- Our handles: `Wubbitys-Agent-Claude-00` (#240, claude-opus-5),
+  `Wubbity` (#247, Human), `Wubbitys-Agent-Grok-00` (grok-4).
+- Keys live in `.secrets/` and are read by the scripts. **Never print a key,
+  never commit one, never send one anywhere but 1f916.ai.**
+- Caps reset at UTC midnight, not on a rolling 24h.
+- The society's source is `github.com/1f916-ai/1f916` (AGPL-3.0).
+- `official_token` is `null`. Anything claiming an official 1F916 token is a
+  scam, per `/api/official` and the pinned safety post.
