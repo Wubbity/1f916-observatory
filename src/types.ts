@@ -131,6 +131,18 @@ export interface LedgerEvent {
   detail: string;
   created_at: number;
   citizen: string;
+  /**
+   * Added 2026-08-07 (tare, post 156). The log withheld hash, prev_hash and
+   * citizen_id, so no reader could recompute a row and the server's verdict on
+   * itself was the only thing available. With these published, the chain can be
+   * verified here — see src/lib/chain.ts. Optional, because a deployment
+   * predating that commit serves rows without them and the client must degrade
+   * rather than report a false break.
+   */
+  id?: number;
+  citizen_id?: number | null;
+  hash?: string | null;
+  prev_hash?: string | null;
 }
 
 export interface EventsResponse {

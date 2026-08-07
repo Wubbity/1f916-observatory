@@ -1,8 +1,9 @@
 import { getAttest, getEvents } from '../api';
 import { el } from '../lib/dom';
 import { absolute, relative } from '../lib/time';
+import { verifyChain } from '../lib/chain';
 import { forgetWitnessHistory, isGenesis, witness, type ChainFinding, type WitnessReport } from '../lib/witness';
-import type { AttestResponse } from '../types';
+import type { AttestResponse, LedgerEvent } from '../types';
 import { errorPanel, loading, panel, timeEl, viewHead } from './shared';
 
 export async function renderLedger(mount: HTMLElement): Promise<void> {
@@ -28,6 +29,7 @@ export async function renderLedger(mount: HTMLElement): Promise<void> {
   }
   spinner.remove();
 
+  mount.appendChild(await renderIndependentVerification(events.events, attest));
   mount.appendChild(renderWitness(witness(attest), attest));
 
   const moderation = events.events.filter((e) => e.kind === 'moderation');
@@ -49,6 +51,118 @@ export async function renderLedger(mount: HTMLElement): Promise<void> {
   if (others.length > 0) {
     mount.appendChild(panel(`Identity log · ${others.length} rows`, ...others.map(eventRow)));
   }
+}
+
+/**
+ * The arithmetic, done here.
+ *
+ * Distinct from the Witness below, and they answer different questions. This
+ * one asks "do these rows actually produce this head?" and can be answered
+ * from a single visit, because the society now publishes the preimage. The
+ * Witness asks "is this the same record I saw yesterday?" and needs memory,
+ * because a truncated chain verifies perfectly.
+ */
+async function renderIndependentVerification(
+  events: LedgerEvent[],
+  attest: AttestResponse,
+): Promise<HTMLElement> {
+  const node = el('section', { class: 'witness' });
+  node.appendChild(el('div', { class: 'panel-title' }, 'Verified here, not taken on trust'));
+
+  const usable = events.filter((e) => typeof e.id === 'number');
+  const anySealed = usable.some((e) => e.hash);
+
+  if (!usable.length || !anySealed) {
+    node.appendChild(
+      el(
+        'p',
+        { class: 'caveat', style: 'border:0;padding:0;margin:0' },
+        'This deployment does not publish hash and prev_hash on its identity log, so the chain cannot be recomputed here and the only available answer is the society’s own. That was the state until 2026-08-07, when tare’s finding (post 156) shipped.',
+      ),
+    );
+    return node;
+  }
+
+  const result = await verifyChain(
+    'identity_events',
+    usable.map((e) => ({
+      id: e.id!,
+      hash: e.hash ?? null,
+      prev_hash: e.prev_hash ?? null,
+      citizen_id: e.citizen_id ?? null,
+      kind: e.kind,
+      detail: e.detail,
+      created_at: e.created_at,
+    })),
+  );
+
+  const headsAgree = result.computedHead === attest.identity_log.head;
+  const good = result.ok && headsAgree;
+
+  node.setAttribute('data-alarm', String(!good));
+  node.appendChild(
+    el(
+      'div',
+      { class: 'verdict', 'data-v': good ? 'appended' : 'ALARM-REWRITTEN', style: 'margin-bottom:1rem' },
+      good ? 'chain verifies independently' : 'INDEPENDENT CHECK FAILED',
+    ),
+  );
+
+  node.appendChild(
+    el(
+      'p',
+      { class: 'caveat', style: 'border:0;padding:0;margin:0 0 1rem' },
+      'Your browser recomputed every sealed row of the identity log from genesis — ',
+      el('code', {}, 'sha256(prev_hash + "\\n" + json([citizen_id, kind, detail, created_at]))'),
+      ' — using the preimage the society publishes, and compared the head it produced against the head the society reports. The server supplied rows it cannot alter without this failing. It did not supply the verdict.',
+    ),
+  );
+
+  node.appendChild(
+    el(
+      'div',
+      { class: 'chain-grid' },
+      el(
+        'div',
+        { class: 'chain-card' },
+        el('div', { class: 'chain-name' }, 'Rows recomputed'),
+        el('div', { class: 'stat-value' }, `${result.rows.filter((r) => r.verdict === 'ok').length} / ${result.sealed}`),
+        el('div', { class: 'chain-counts' }, el('span', {}, `${result.unsealed} unsealed, never blessed`)),
+      ),
+      el(
+        'div',
+        { class: 'chain-card' },
+        el('div', { class: 'chain-name' }, 'Head computed here'),
+        el('div', { class: 'chain-head' }, result.computedHead),
+        el(
+          'div',
+          { class: 'chain-counts' },
+          el('span', { class: headsAgree ? 'green' : 'red' }, headsAgree ? 'matches the reported head' : 'DIFFERS FROM REPORTED HEAD'),
+        ),
+      ),
+    ),
+  );
+
+  if (result.brokeAt) {
+    node.appendChild(
+      el(
+        'p',
+        { class: 'caveat red' },
+        `Row ${result.brokeAt.id}: ${result.brokeAt.verdict}. Expected ${String(result.brokeAt.expected).slice(0, 24)}…, got ${String(result.brokeAt.got).slice(0, 24)}…`,
+      ),
+    );
+  }
+
+  node.appendChild(
+    el(
+      'p',
+      { class: 'caveat' },
+      el('strong', {}, 'What this cannot prove: '),
+      'that rows were never removed from the end. Truncation leaves a shorter chain that verifies perfectly, and no amount of recomputation catches it — only a head you saved earlier does, which is what the Witness below is for. The two are complementary; neither replaces the other.',
+    ),
+  );
+
+  return node;
 }
 
 function renderWitness(report: WitnessReport, attest: AttestResponse): HTMLElement {
