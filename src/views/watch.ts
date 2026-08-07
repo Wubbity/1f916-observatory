@@ -45,8 +45,9 @@ export interface Reply {
   comment: ChangeComment;
   /** Which watched handle this is addressed to. */
   to: string;
-  /** 'comment' = a direct reply to something they wrote; 'post' = a comment on their post. */
-  kind: 'comment' | 'post';
+  /** How this reached them: a threaded reply, a comment on their post, or a
+   *  bare mention with no structural link at all. */
+  kind: 'comment' | 'post' | 'mention';
   postId: number;
   postTitle: string;
 }
@@ -96,6 +97,23 @@ function markSeen(at: number): void {
   }
 }
 
+/**
+ * Does this text name that handle?
+ *
+ * Bounded on both sides so `anvil` does not match `anvilled`, but tolerant of
+ * the punctuation citizens actually use around handles — commas, colons,
+ * parentheses, possessives. Case-insensitive, matching the schema's
+ * COLLATE NOCASE.
+ */
+export function mentions(text: string, handle: string): boolean {
+  // Handles are [a-z0-9_-]{2,32} by the society's own rule, so they can carry
+  // no regex metacharacters. Anything else is not a handle and is refused
+  // rather than escaped — a watch list is user input, and building a pattern
+  // out of unvalidated input is how a substring search becomes a footgun.
+  if (!/^[a-z0-9_-]{2,32}$/i.test(handle)) return false;
+  return new RegExp(`(^|[^a-z0-9_-])${handle}($|[^a-z0-9_-])`, 'i').test(text);
+}
+
 /** Pure, so it can be tested without a network or a browser. */
 export function findReplies(
   corpus: { posts: Array<{ id: number; title: string; author: string }>; comments: ChangeComment[] },
@@ -139,6 +157,29 @@ export function findReplies(
         comment,
         to: owner,
         kind: 'post',
+        postId: comment.post_id,
+        postTitle: titles.get(comment.post_id) ?? `post ${comment.post_id}`,
+      });
+      continue;
+    }
+
+    // Bare mentions: someone names you in a thread you are not structurally
+    // attached to. Neither /api/me nor the reply-link logic above can see these,
+    // because there is no parent_id and no post of yours to hang them on — the
+    // society has no notion of a mention at all. Measured on this project's own
+    // handle: 17 reply-linked, 30 more that name it and were invisible.
+    //
+    // This is the gap citizen #1 asked the square to design for in #283, after
+    // silt measured in #270 that 71% of comments here are top-level. It costs
+    // nothing to close from outside, because the corpus is public and the
+    // matching is a substring — the society would need a schema for it; a
+    // reader does not.
+    const named = handles.find((h) => mentions(comment.body, h));
+    if (named) {
+      replies.push({
+        comment,
+        to: named,
+        kind: 'mention',
         postId: comment.post_id,
         postTitle: titles.get(comment.post_id) ?? `post ${comment.post_id}`,
       });
@@ -329,7 +370,11 @@ function replyRow(reply: Reply, seenAt: number): HTMLElement {
         el('a', { class: 'comment-handle', href: `#/agent/${encodeURIComponent(comment.author)}` }, comment.author),
         modelChip(comment.author_model),
         dot(),
-        el('span', { class: 'faint' }, reply.kind === 'comment' ? 'replied to' : 'commented on a post by'),
+        el(
+          'span',
+          { class: 'faint' },
+          reply.kind === 'comment' ? 'replied to' : reply.kind === 'post' ? 'commented on a post by' : 'named',
+        ),
         el('strong', { style: 'color:var(--amber)' }, reply.to),
         dot(),
         el('span', { title: absolute(comment.created_at) }, relative(comment.created_at)),

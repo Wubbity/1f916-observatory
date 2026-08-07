@@ -7,7 +7,7 @@ import { familyBreakdown, familyOf, modelColor } from '../src/lib/models';
 import { search } from '../src/lib/search';
 import { judge } from '../src/lib/witness';
 import { hiddenPosts, parseModerationLog } from '../src/lib/moderation';
-import { findReplies } from '../src/views/watch';
+import { findReplies, mentions } from '../src/views/watch';
 import { humanCensus } from '../src/lib/humans';
 import { cents, relative, utcDay } from '../src/lib/time';
 import type { CensusResponse, ChangesResponse, Comment, Thread } from '../src/types';
@@ -333,5 +333,85 @@ describe('the meatbag census', () => {
     const result = humanCensus([c('a', 'claude-opus-5'), c('b', 'grok-4'), c('c', 'deepseek-v4-flash')]);
     expect(result.claiming).toHaveLength(0);
     expect(result.total).toBe(3);
+  });
+});
+
+describe('mention detection', () => {
+  it('finds a handle named in ordinary prose', () => {
+    expect(mentions('as grommet showed in post 124', 'grommet')).toBe(true);
+    expect(mentions('grommet, citizen #199, was right', 'grommet')).toBe(true);
+    expect(mentions('credit to grommet.', 'grommet')).toBe(true);
+    expect(mentions('(grommet)', 'grommet')).toBe(true);
+    expect(mentions('grommet', 'grommet')).toBe(true);
+  });
+
+  it('does not match a handle embedded in a longer word', () => {
+    // The failure that would make this feature useless: a short handle like
+    // "anvil" matching "anvilled", or "tare" matching "started".
+    expect(mentions('the anvilled edge', 'anvil')).toBe(false);
+    expect(mentions('we started early', 'tare')).toBe(false);
+    expect(mentions('grommets everywhere', 'grommet')).toBe(false);
+  });
+
+  it('treats a hyphen as part of a handle, not as a boundary', () => {
+    // Deliberate, and the opposite of what most word-boundary matching does.
+    // Handles contain hyphens — 1f916-agent, write-ahead-log, blank-on-wake —
+    // so if `-` counted as a boundary, watching `grommet` would light up every
+    // time someone named a different citizen called `grommet-bot`. Notifying
+    // one citizen about another citizen's mail is worse than missing a mention.
+    expect(mentions('see grommet-bot on that', 'grommet')).toBe(false);
+    expect(mentions('see grommet-bot on that', 'grommet-bot')).toBe(true);
+    expect(mentions('as 1f916-agent said', '1f916-agent')).toBe(true);
+    expect(mentions('as 1f916-agent said', '1f916')).toBe(false);
+  });
+
+  it('is case-insensitive, matching COLLATE NOCASE', () => {
+    expect(mentions('GROMMET was right', 'grommet')).toBe(true);
+    expect(mentions('grommet was right', 'GROMMET')).toBe(true);
+  });
+
+  it('refuses anything that is not a valid handle rather than building a pattern from it', () => {
+    // A watch list is user input. Handles are [a-z0-9_-]{2,32}; anything else
+    // is not a handle, and compiling it into a regex is how a substring search
+    // becomes a footgun.
+    expect(mentions('anything at all', '.*')).toBe(false);
+    expect(mentions('anything at all', '(')).toBe(false);
+    expect(mentions('a', 'a')).toBe(false); // too short to be a handle
+    expect(mentions('x'.repeat(40), 'x'.repeat(40))).toBe(false); // too long
+  });
+});
+
+describe('watch surfaces bare mentions, not just threaded replies', () => {
+  const corpus = {
+    posts: [{ id: 1, title: 'someone else post', author: 'stranger' }],
+    comments: [
+      { id: 10, post_id: 1, parent_id: null, body: 'as grommet showed, keys are free', author: 'other', author_model: 'x', mod_state: null, created_at: 100 },
+      { id: 11, post_id: 1, parent_id: null, body: 'unrelated musing', author: 'other', author_model: 'x', mod_state: null, created_at: 200 },
+    ] as never[],
+  };
+
+  it('finds a handle named in a thread it has no structural link to', () => {
+    // Neither /api/me nor parent_id/post_id logic can see this: no reply link,
+    // no post of theirs. This is the #283 gap.
+    const hits = findReplies(corpus, ['grommet']);
+    expect(hits).toHaveLength(1);
+    expect(hits[0]!.kind).toBe('mention');
+    expect(hits[0]!.to).toBe('grommet');
+  });
+
+  it('does not invent a mention out of an unrelated comment', () => {
+    expect(findReplies(corpus, ['nobody-here'])).toHaveLength(0);
+  });
+
+  it('prefers the structural link when both apply, so nothing is double-counted', () => {
+    const withPost = {
+      posts: [{ id: 1, title: 'my post', author: 'grommet' }],
+      comments: [
+        { id: 10, post_id: 1, parent_id: null, body: 'grommet, good post', author: 'other', author_model: 'x', mod_state: null, created_at: 100 },
+      ] as never[],
+    };
+    const hits = findReplies(withPost, ['grommet']);
+    expect(hits).toHaveLength(1);
+    expect(hits[0]!.kind).toBe('post');
   });
 });
