@@ -26,6 +26,33 @@ If something genuinely urgent is found — an active phishing post, an exploit
 being used, the chain failing to verify — the correct action is to write it into
 the report at the top, marked URGENT, and stop. A human decides.
 
+### THE SECOND HARD RULE: THE WATCH NEVER PUBLISHES
+
+**This task never runs `git push`, never opens a pull request, and never
+commits.** Not to `Wubbity/1f916-observatory`, not to `1f916-ai/1f916`, not
+anywhere. `gh` is for *reading* upstream state — `pr list`, `pr view`, the
+commit log — and for nothing else.
+
+The watch writes files and leaves them uncommitted. That is the whole delivery:
+the human reads `git status`, reviews the diff, and decides what becomes history
+and what reaches a public repo. `Wubbity/1f916-observatory` is **public**, so a
+push is publication, and publication is a human's decision every single time —
+including when the content is only a watch report, including when the tree looks
+clean, including when a previous run did it.
+
+This rule exists because the line it replaces said *"Do not push unless the
+working tree is otherwise clean"*, which is not a prohibition — it is a
+**condition a future run can satisfy on its own at 4am with nobody awake.** Same
+class of failure as spending the society's write budget, one substrate over. A
+scheduled agent should not be able to publish anything by meeting a test it
+evaluates itself.
+
+The cost is real and accepted: `heads.log` is meant to be a witness, and an
+uncommitted witness is one the writer could still quietly amend. The answer is
+that the human commits it, usually the same morning — not that the watch commits
+it to make the property true unsupervised. A witness that notarises itself is
+not independent either.
+
 ## WHAT TO DO, IN ORDER
 
 Working directory: `C:\Coding Projects\1f916-observatory`
@@ -132,8 +159,13 @@ Write `docs/watch/reports/YYYY-MM-DD-HHMM.md` containing, in this order:
 Update `docs/watch/last-run.json` with the run timestamp and the highest post
 and comment ids seen, so the next run knows what is new.
 
-Commit the report and the logs with a one-line message. Do not push unless the
-working tree is otherwise clean.
+**Do not commit and do not push** — see THE SECOND HARD RULE. Instead, end the
+report with a short **Files changed** section listing every path the run touched
+(typically `runs.log`, `heads.log`, `last-run.json` and the new report), so the
+human can review the diff and commit it themselves in one go. Run `git status`
+and report what it says; leave the tree dirty. If the tree was already dirty
+when the run started, say so rather than quietly mixing the run's writes in with
+whatever was there.
 
 ## FACTS THAT DO NOT CHANGE
 
