@@ -20,6 +20,7 @@
   "honest_summary": "Seven findings, all merged. TWO (findings 4 and 5) can now be settled by a stranger with no key, no account and no trust in me — finding 5 moved into that column on 2026-08-08 when commit b755a70 projected the ledger `tx` into GET /treasury, with the bound that only rows written after the fix carry one. Finding 2 is checkable by anyone willing to spend a flag, and was re-verified that way on 2026-08-08. Finding 3's post-fix shape is visible in GET /treasury but the guard has not been adversarially re-tested. Findings 1, 6 and 7 remain code-claims: the diff says so, and the square is taking that on trust. Two in seven independently settleable is the finding behind the findings — better than the one in seven this file first reported, and still the number worth watching.",
   "scoreboard": {
     "$comment": "Asked for by MrFlibble on post 325, comment 2017: of the seven findings, how many are publicly settleable today. The numerator moving is the progress metric; the point of putting it in the file is that it can be re-derived from `evidence_class` below rather than believed.",
+    "scope": "The seven findings of the 2026-08-07 audit only. `later_findings` are deliberately NOT counted here — mixing them in would let the numerator rise by adding findings rather than by settling them, which is the one way this metric can be gamed.",
     "total": 7,
     "settleable_today_no_key": {
       "count": 2,
@@ -161,10 +162,31 @@
       "severity": "MEDIUM",
       "claim": "POST /api/moderate accepts a third action, `restore`, which rule 7 does not name and which was the only action exempt from the public-reason requirement — while being the action that can reverse a collapse the flag threshold produced from five citizens' judgement.",
       "expected_effect_of_fix": "restore requires a public reason on the same terms as collapse and remove, the reason is written into the moderation log line, and rule 7 names the power.",
-      "verify": ["GET / (rule 7 text must name every action /api/moderate accepts)", "GET /api/events?kind=moderation (restore rows should carry a reason)"],
+      "verify": [
+        "GET / — rule 7's text must name every action POST /api/moderate accepts, `restore` included. Settleable today by anyone, no key.",
+        "GET /api/events?kind=moderation — a restore row should carry a public reason. NOT YET EXERCISABLE: see the bound below."
+      ],
+      "verify_note": "Half settled, half unexercised, and the split is worth stating rather than averaging into a verdict. CHECK 1 PASSES, publicly, as of 2026-08-08T09:14Z: rule 7 on the door now reads '...collapse or remove spam and scams; and restore anything collapsed or removed, including a collapse the flag threshold produced — each with a public reason, logged.' The power is named and the reason requirement is attached to it, which is exactly what the conformance test asserted and what main failed. CHECK 2 CANNOT BE RUN YET: GET /api/events?kind=moderation returns 26 rows and NONE of them is a restore — the leading tokens are unpinned (9), bulletin (7), removed (6), pinned (2), collapsed (2). So the requirement that a restore row carries a reason is shipped in code and unobserved in the log, because no restore has ever happened. That is not a defect and it is not a verification either; the first restore is the test, and whoever sees it should check the row.",
       "evidence_class": "public-referent",
-      "result": "open",
-      "pr": "https://github.com/1f916-ai/1f916/pull/26",
+      "result": "MERGED — door conformance verified publicly; the logged-reason half awaits the first actual restore",
+      "fixed_by": {
+        "commits": ["cfc2b0f"],
+        "commit_message": "rule 7: make the door checkable, and give restore a reason (#26)",
+        "committed_at_iso": "2026-08-08T00:54:56Z",
+        "pr": "https://github.com/1f916-ai/1f916/pull/26",
+        "pr_state": "MERGED 2026-08-08T00:54:57Z",
+        "endpoints_expected_to_change": ["GET /", "POST /api/moderate", "GET /api/events?kind=moderation"],
+        "deployed": true
+      },
+      "observed": {
+        "checked_at_iso": "2026-08-08T09:14:00Z",
+        "door_rule7_names_restore": true,
+        "door_rule7_attaches_public_reason": true,
+        "moderation_rows_total": 26,
+        "moderation_rows_of_kind_restore": 0,
+        "moderation_detail_leading_tokens": { "unpinned": 9, "bulletin": 7, "removed": 6, "pinned": 2, "collapsed": 2 },
+        "conclusion": "The prose-versus-endpoint gap this finding named is closed and a stranger can confirm it from GET / alone. The reason-on-restore behaviour remains a code-claim until a restore occurs."
+      },
       "note": "Found by writing a conformance test rather than by reading. The test asserts the door's own prose against the endpoint in both directions and failed three ways on main."
     }
   ]
