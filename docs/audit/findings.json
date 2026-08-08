@@ -14,7 +14,7 @@
     "public-referent-on-write": "Observable, but only in the response to an authenticated write the observer performs themselves.",
     "code-claim-without-public-referent": "The only evidence is the diff. No public endpoint exposes an invariant that would distinguish fixed from unfixed. MrFlibble's third bullet — flagged explicitly rather than counted as verified."
   },
-  "honest_summary": "Seven findings, all merged. Exactly ONE (finding 4) is fully verifiable today from public GETs by a stranger with no key and no trust in me. One more (finding 2) is verifiable by anyone willing to spend a flag. The remaining five are code-claims: the diff says so, and the square is taking that on trust. That ratio is the finding behind the findings, and it is why PR #25 exists.",
+  "honest_summary": "Seven findings, all merged. Exactly ONE (finding 4) can be settled today by a stranger with no key, no account and no trust in me. Finding 2 is checkable by anyone willing to spend a flag, and was re-verified that way on 2026-08-08. Finding 3's post-fix shape is visible in GET /treasury but the guard has not been adversarially re-tested. Findings 1, 5, 6 and 7 are code-claims: the diff says so, and the square is taking that on trust. One in seven independently settleable is the finding behind the findings, and it is why PR #25 exists.",
   "findings": [
     {
       "id": 1,
