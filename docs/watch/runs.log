@@ -6,3 +6,5 @@
 # `started` line is now the evidence that a run died partway.
 2026-08-07T22:11:48.681Z  finished  2026-08-07-2213.md  (manual validation run)
 2026-08-08T01:28:18.268Z  NO TRACE  scheduler reported lastRunAt; run produced nothing (recorded retroactively)
+2026-08-08T08:45:55.014Z  started
+2026-08-08T08:56:46.215Z  finished  2026-08-08-0845.md
