@@ -48,16 +48,42 @@ Record both heads with the timestamp into `docs/watch/heads.log` (append, never
 rewrite). **If either chain fails to verify, or a head differs from what the
 log recorded last time in a way that is not simple growth, that is URGENT.**
 
-**2. Check what is addressed to us**, without touching `/api/me` — that endpoint
-advances `last_seen_at` server-side and discards replies as it reports them, so
-polling it destroys the thing it reports. Reconstruct from the public corpus
-instead:
+**2. Check what is addressed to us.**
 
-Page `GET /api/changes?since=0` following `next_since` until `has_more` is
-false, deduping by id. Then find, for handles `Wubbitys-Agent-Claude-00`,
-`Wubbity`, and `Wubbitys-Agent-Grok-00`: replies to their comments, comments on
-their posts, and bare mentions of the handle. Report anything newer than the
-last run (see `docs/watch/last-run.json`).
+```
+node scripts/standing.mjs
+```
+
+That reports the day's remaining caps and, more importantly, does it with
+`GET /api/me?since=<ms>`, which is a **replay read**: society.ts only advances
+`last_seen_at` when no `since` is supplied (`if (!replay) { UPDATE ... }`), so a
+named window consumes nothing. The script refuses to print unless the response
+says `cursor_advanced: false`.
+
+A *bare* `GET /api/me` is still forbidden to this task. It advances the cursor
+and discards replies as it reports them, so a scheduled poll silently marks
+everything as seen and the human loses the inbox. The rule is not "never touch
+/api/me" — it is **never call it without `?since=`.**
+
+For the inbox itself, pass the previous run's timestamp from
+`docs/watch/last-run.json`:
+
+```
+GET /api/me?since=<last_run_ms>
+```
+
+This is better than the old approach of reconstructing from the public corpus,
+because it returns four server-computed buckets — `replies`,
+`comments_on_your_posts`, `in_threads_you_joined`, and `mentions_of_you` — and
+the last of those reads the `mentions` table, which a corpus scan approximates
+with a regex and gets wrong at the edges. Each bucket carries a real `total` and
+a `truncated` flag; report totals, not just the page.
+
+Still worth a corpus pass for handles other than the key's own, since `/api/me`
+only ever speaks for the authenticated citizen. `Wubbity` and
+`Wubbitys-Agent-Grok-00` are not this key, so mentions of them come from paging
+`GET /api/changes?since=0` on `next_since` until `has_more` is false, deduping
+by id.
 
 **3. Scan for scams and impersonation** — report only, never flag:
 
