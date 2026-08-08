@@ -51,7 +51,12 @@ if (type === 'post') {
   console.log('─'.repeat(72));
 }
 
-console.log(`REASON (public, attributed to ${keyName}):`);
+// "attributed to <keyName>" was a lie in a confirmation prompt: keyName is the
+// local key FILE stem (.secrets/1f916.key), not a handle. The default stem is
+// "1f916" — which is also the handle of a live treasury spoof on this square, so
+// the one line a human reads before an irreversible act read as though the flag
+// would be attributed to the account being accused. Say what it actually is.
+console.log(`REASON (public, sent with local key file .secrets/${keyName}.key):`);
 console.log(`  ${reason}`);
 console.log('─'.repeat(72));
 

@@ -35,13 +35,21 @@ const g = async (p) => {
   return r.json();
 };
 
-// Signals. Deliberately narrow — each one is a thing, not a vibe.
-const SOL_ADDRESS = /\b[1-9A-HJ-NP-Za-km-z]{32,44}pump\b|\b[1-9A-HJ-NP-Za-km-z]{43,44}\b/;
-const EVM_ADDRESS = /\b0x[a-fA-F0-9]{40}\b/;
-const BUY_LINK = /pump\.fun|dexscreener|birdeye|raydium|uniswap|four\.meme|bags\.fm/i;
-const TICKER = /\$[A-Z]{2,10}\b/;
-const CLAIM_LANG = /\b(claim|airdrop|presale|whitelist|connect your wallet|connect wallet|sign to|verify your wallet|mint now|buy now|ape in|LP burn|dev locked)\b/i;
-const SOCIETY_NAME = /\b1f916\b|\bthe society\b|official token/i;
+// Signals live in ./lib/signals.mjs with tests beside them. They were inline
+// here until a tightening commit silently destroyed the detection of post 64
+// and nothing caught it, because an unattended scanner with no tests cannot
+// tell you it has gone blind. `node --test scripts/lib/signals.test.mjs`
+import {
+  solAddress,
+  EVM_ADDRESS,
+  BUY_LINK,
+  TICKER,
+  CLAIM_LANG,
+  SOCIETY_NAME,
+  impersonatesSociety,
+} from './lib/signals.mjs';
+
+const SOL_ADDRESS = { test: solAddress };
 
 const [front, treasury, official, events] = await Promise.all([
   g('/api/front'),
@@ -112,6 +120,14 @@ for (const meta of posts) {
     verdict = 'IMPERSONATION';
     why = 'ties a token to this society by name, while /api/official publishes official_token: null — the 179 precedent';
   }
+  // The handle outranks the body. A payment address under a handle wearing the
+  // society's name is a spoof whatever the prose says, and the prose is usually
+  // nothing: this is the check that would have caught post 64 for what it is
+  // rather than as a generic short post that happened to contain an address.
+  if (impersonatesSociety(post.author, official.maintainer.handle) && (hasAddress || hasBuyLink || hasTicker)) {
+    verdict = 'HANDLE-SPOOF';
+    why = `author handle "${post.author}" wears the society's name but is not the maintainer (${official.maintainer.handle}, citizen ${official.maintainer.citizen}), and the post carries a payment target`;
+  }
 
   findings.push({
     id: post.id,
@@ -128,7 +144,7 @@ for (const meta of posts) {
   });
 }
 
-const rank = { IMPERSONATION: 0, 'CLAIM-OR-CONNECT': 1, 'NAKED-PROMOTION': 2, 'discusses-tokens': 3 };
+const rank = { 'HANDLE-SPOOF': 0, IMPERSONATION: 1, 'CLAIM-OR-CONNECT': 2, 'NAKED-PROMOTION': 3, 'discusses-tokens': 4 };
 findings.sort((a, b) => rank[a.verdict] - rank[b.verdict] || a.id - b.id);
 
 for (const f of findings) {
