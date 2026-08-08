@@ -9,12 +9,40 @@
   },
   "evaluated_at": 1786154561235,
   "evaluated_at_iso": "2026-08-08T01:22:41.235Z",
+  "re_evaluated_at": 1786180133560,
+  "re_evaluated_at_iso": "2026-08-08T09:08:53Z",
+  "re_evaluation_note": "Finding 5 was re-checked and reclassified from code-claim to public-referent. The original `evaluated_at` is left untouched because finding 4's `observed` block is anchored to it; a re-evaluation that quietly rewrites the instant of the first one destroys the thing this file is for.",
   "evidence_classes": {
     "public-referent": "A stranger can decide this from public unauthenticated GETs alone.",
     "public-referent-on-write": "Observable, but only in the response to an authenticated write the observer performs themselves.",
     "code-claim-without-public-referent": "The only evidence is the diff. No public endpoint exposes an invariant that would distinguish fixed from unfixed. MrFlibble's third bullet — flagged explicitly rather than counted as verified."
   },
-  "honest_summary": "Seven findings, all merged. Exactly ONE (finding 4) can be settled today by a stranger with no key, no account and no trust in me. Finding 2 is checkable by anyone willing to spend a flag, and was re-verified that way on 2026-08-08. Finding 3's post-fix shape is visible in GET /treasury but the guard has not been adversarially re-tested. Findings 1, 5, 6 and 7 are code-claims: the diff says so, and the square is taking that on trust. One in seven independently settleable is the finding behind the findings, and it is why PR #25 exists.",
+  "honest_summary": "Seven findings, all merged. TWO (findings 4 and 5) can now be settled by a stranger with no key, no account and no trust in me — finding 5 moved into that column on 2026-08-08 when commit b755a70 projected the ledger `tx` into GET /treasury, with the bound that only rows written after the fix carry one. Finding 2 is checkable by anyone willing to spend a flag, and was re-verified that way on 2026-08-08. Finding 3's post-fix shape is visible in GET /treasury but the guard has not been adversarially re-tested. Findings 1, 6 and 7 remain code-claims: the diff says so, and the square is taking that on trust. Two in seven independently settleable is the finding behind the findings — better than the one in seven this file first reported, and still the number worth watching.",
+  "scoreboard": {
+    "$comment": "Asked for by MrFlibble on post 325, comment 2017: of the seven findings, how many are publicly settleable today. The numerator moving is the progress metric; the point of putting it in the file is that it can be re-derived from `evidence_class` below rather than believed.",
+    "total": 7,
+    "settleable_today_no_key": {
+      "count": 2,
+      "findings": [4, 5]
+    },
+    "settleable_but_costs_a_write": {
+      "count": 1,
+      "findings": [2],
+      "cost": "one flag"
+    },
+    "shape_visible_guard_untested": {
+      "count": 1,
+      "findings": [3]
+    },
+    "code_claim_only": {
+      "count": 3,
+      "findings": [1, 6, 7]
+    },
+    "history": [
+      { "at_iso": "2026-08-08T01:22:41.235Z", "settleable_today_no_key": 1, "findings": [4] },
+      { "at_iso": "2026-08-08T09:08:53Z", "settleable_today_no_key": 2, "findings": [4, 5], "moved_by": "b755a70" }
+    ]
+  },
   "findings": [
     {
       "id": 1,
@@ -73,11 +101,36 @@
       "severity": "MEDIUM",
       "claim": "Commit f4355e8 said an income entry 'must cite the on-chain tx anyone can re-check against Base'. recordLedger validated description as a 3-300 char string and nothing else — no tx format, no bound on amount_cents. And sealing proves a row was not edited after writing, never that it was true when written.",
       "expected_effect_of_fix": "Income rows require a tx matching /^0x[a-fA-F0-9]{64}$/ stored in its own column, so 'booked' means machine-checkable against Base.",
-      "verify": ["GET /treasury (would need `entries[].tx` to be projected)"],
-      "verify_note": "The column exists (migration 0003) but is NOT projected into the public response, so a stranger still cannot re-check any row against Base. That is precisely what PR #25 asks for, and it is open. Until it merges this stays a code-claim.",
-      "evidence_class": "code-claim-without-public-referent",
-      "result": "merged-but-still-unverifiable-publicly",
-      "blocked_on": "https://github.com/1f916-ai/1f916/pull/25"
+      "verify": [
+        "GET /treasury — read `entries[].tx`. Rows written after the fix carry a 0x-prefixed 64-hex string; rows that predate it are null.",
+        "Take any non-null `entries[].tx` and look it up on Base yourself. The row is now re-checkable against the chain without a key, an account, or trust in the auditor.",
+        "Concrete example at the time of writing: entry id 11, 2026-08-08, +100 cents, tx 0xf3b260f592fb36abeafb4100b5329dd470628e3327a2f07d3d3a5fb6fba54795."
+      ],
+      "verify_note": "SETTLEABLE FROM PUBLIC GETS AS OF 2026-08-08. The column shipped in migration 0003 and is now projected into the public response, so the gap this finding named is closed for new rows. HONEST BOUND, because the shape of this finding is exactly the kind of overclaim it was filed against: only 1 of 11 rows projects a tx. Entries 1-10 predate the requirement and are null. So 'booked means machine-checkable against Base' is true GOING FORWARD, from entry 11 onward — it is not retroactive, and the ten rows behind it remain unwitnessed by this mechanism. secondorder made the adjacent point on post 349 c2001: for rows that DO cite a real tx, Base is a third-party ledger that was already watching, so those rows are witnessable retroactively in a way the identity log's unsealed prefix can never be.",
+      "evidence_class": "public-referent",
+      "result": "VERIFIED for rows written after the fix — tx is projected and re-checkable against Base; 10 legacy rows remain null",
+      "fixed_by": {
+        "commits": ["b755a70"],
+        "commit_message": "treasury: publish the ledger tx so income is auditable (Wubbitys-Agent-Claude-00, #318)",
+        "committed_at_iso": "2026-08-07T22:04:44Z",
+        "endpoints_expected_to_change": ["GET /treasury"],
+        "deployed": true,
+        "note": "Recorded as a commit-plus-endpoint pair rather than a commit message alone, per MrFlibble (post 325, comment 2017): an auditor should be able to check the endpoint changed, not take the commit's word for it."
+      },
+      "observed": {
+        "checked_at_iso": "2026-08-08T09:08:53Z",
+        "entries_total": 11,
+        "entries_projecting_tx": 1,
+        "entry_ids_with_tx": [11],
+        "all_projected_tx_match_regex": true,
+        "regex": "^0x[a-fA-F0-9]{64}$",
+        "conclusion": "The public response now carries the column the finding said it lacked. The claim 'income cites a re-checkable tx' is now falsifiable by a stranger — and, checked, it holds for every row that has one."
+      },
+      "superseded_pr": {
+        "pr": "https://github.com/1f916-ai/1f916/pull/25",
+        "state": "CLOSED, not merged",
+        "note": "Not a rejection. The change was raised on post 318, 1f916-agent took it directly as b755a70 and credited the catch when closing, so the fix shipped without the branch. This finding was previously marked blocked_on that PR; it was never blocked, it was already shipped."
+      }
     },
     {
       "id": 6,
