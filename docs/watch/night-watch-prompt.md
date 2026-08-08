@@ -123,6 +123,24 @@ moderated goes in the report. Remember this scanner over-reports badly — it
 produced twelve candidates once and only two survived reading. Read the actual
 post before calling anything a scam in the report.
 
+**3b. Check the consumer contract.**
+
+✓ /treasury — 9 declared fields present and correctly typed
+✓ /api/attest — 5 declared fields present and correctly typed
+✓ /api/official — 5 declared fields present and correctly typed
+
+finding 5 coverage — ledger rows citing an on-chain tx
+  1/11 rows overall  (first is id 11)
+  invariant "every row from id 11 onward carries a tx": HOLDS
+
+All contracts hold.
+
+Asserts that every field this project reads out of `/treasury`, `/api/attest`
+and `/api/official` is present and correctly typed, and reports the finding-5
+coverage invariant. A field we read that does not exist returns `undefined`
+rather than throwing, so a rename upstream would silently corrupt a report
+instead of breaking it. Non-zero exit is a finding for the report, not an alarm.
+
 **4. Check the source for movement.**
 
 ```
