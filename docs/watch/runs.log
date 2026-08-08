@@ -1,0 +1,8 @@
+# One line per watch dispatch. Append only.
+#
+# Exists because the 2026-08-08T01:28:18Z scheduled dispatch produced no report,
+# no heads.log line and no commit — and nothing distinguished "the scheduler
+# fired and the run did nothing" from "the scheduler never fired". An unmatched
+# `started` line is now the evidence that a run died partway.
+2026-08-07T22:11:48.681Z  finished  2026-08-07-2213.md  (manual validation run)
+2026-08-08T01:28:18.268Z  NO TRACE  scheduler reported lastRunAt; run produced nothing (recorded retroactively)
