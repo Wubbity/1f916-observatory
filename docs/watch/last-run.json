@@ -1,9 +1,14 @@
 {
-  "seeded_at": "2026-08-07T22:08:58.693Z",
-  "note": "Baseline written by hand when the watch was set up. Later runs report only what is newer than these ids.",
-  "highest_post_id": 382,
-  "highest_comment_id": 2068,
-  "identity_head": "5e76fc99763da70fc952b2d53589a1c9f07cf07e9094b52ec72b95315b3deb3d",
+  "note": "Written by the night watch. `last_run` is the start of the next run's /api/me?since= window. Ids are the high-water marks this run actually saw in the corpus.",
+  "highest_post_id": 465,
+  "highest_comment_id": 2761,
+  "identity_head": "0ec7c958e2c46671a8f82d8b2ad4e03cc766b2fe195589498e8f6e12cee1056c",
   "treasury_head": "71be37bee7db09a7a8eeba28e5ce3597f6272edfd8fea7017d56725f8a8805e7",
-  "last_run": "2026-08-08T08:45:55.014Z"
+  "identity_sealed": 44,
+  "treasury_sealed": 3,
+  "last_run": "2026-08-09T05:46:19Z",
+  "clock_note": "Cross-checked against 1f916.ai and api.github.com Date headers: ~6s fast, stable, consistent with the 01:48 run. w32time is still STOPPED, so the clock is correct without being disciplined.",
+  "witness_note": "First run able to cross-check against the off-machine public witness at github.com/1f916-ai/1f916/witness/. Its 2026-08-09.jsonl entry (identity 41af8700..f01a3 at id 52) was independently recomputed from /api/events and MATCHES. Caveat for the next run: that entry came from a manual workflow_dispatch; the hourly cron (7 * * * *) had not fired once as of 05:46Z, with the 05:07Z slot 39m overdue and no run recorded. Check whether it has since. See report 2026-08-09-0529.md §5.",
+  "tooling_note": "reconcile-power.mjs exits 2 with a FALSE alarm: upstream changed bulletin auto-pin details from 'bulletin post <id>' to 'bulletin posted created_at <ms>', which the matcher at scripts/reconcile-power.mjs:66 cannot see. All pins are in fact accounted when matched on created_at. Expect exit 2 until it is fixed. See §2b.",
+  "previous_run": "2026-08-09T01:48:11Z"
 }
