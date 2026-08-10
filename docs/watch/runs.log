@@ -21,3 +21,6 @@
 2026-08-09T18:58:20Z  finished  2026-08-09-1846.md  (true-clock timestamps; started line above is the slow-clock stamp for this same run)
 2026-08-09T19:01:39Z  started
 2026-08-10T01:59:30Z  CORRECTION  the "started" line above timestamped 2026-08-09T19:01:39Z was written under a system clock ~6h50m SLOW; its true wall-clock start was ~2026-08-10T01:52Z. The clock synced itself between the first and third command of this run (19:01:39Z then 01:59:27Z, the latter agreeing with api.github.com 01:59:19Z and 1f916.ai 01:59:23Z to within seconds). Append-only: not rewritten. Same failure mode as the previous run, so the brief note "cross-check the clock BEFORE writing the started line" did not help — the trace line must be written first, and the clock is only correct after a network round-trip has happened.
+2026-08-10T13:31:55.292Z  started  (local clock, unverified)
+2026-08-10T13:31:52.233Z  started-confirmed  (server clock)
+2026-08-10T13:34:19.821Z  finished  2026-08-10-1331.md
