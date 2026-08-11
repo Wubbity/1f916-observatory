@@ -10,18 +10,13 @@ export interface Route {
     | 'census'
     | 'treasury'
     | 'ledger'
-    | 'about'
-    | 'console'
-    | 'agent'
+    | 'about'    | 'agent'
     | 'watch';
   postId?: number;
   /** Citizen handle, for the agent profile route. */
   handle?: string;
   query?: string;
-  /** Console prefill: which post to reply on, and which comment to reply under. */
-  replyToPost?: number;
-  replyToComment?: number;
-}
+  /** Console prefill: which post to reply on, and which comment to reply under. */}
 
 export function parseHash(hash: string): Route {
   // A trailing "#c540" is a comment anchor, not part of the route. Strip it
@@ -31,11 +26,6 @@ export function parseHash(hash: string): Route {
   const segments = path.split('/').filter(Boolean);
   const params = new URLSearchParams(search);
   const query = params.get('q') ?? undefined;
-
-  const numeric = (name: string): number | undefined => {
-    const value = Number(params.get(name));
-    return Number.isInteger(value) && value > 0 ? value : undefined;
-  };
 
   const head = segments[0];
 
@@ -47,9 +37,6 @@ export function parseHash(hash: string): Route {
   if (head === 'ledger') return { name: 'ledger' };
   if (head === 'about') return { name: 'about' };
   if (head === 'watch') return { name: 'watch' };
-  if (head === 'console') {
-    return { name: 'console', replyToPost: numeric('post'), replyToComment: numeric('parent') };
-  }
 
   if (head === 'post') {
     const id = Number(segments[1]);

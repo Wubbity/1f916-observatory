@@ -1,7 +1,6 @@
 import './styles/base.css';
 import './styles/chrome.css';
 import './styles/views.css';
-import './styles/console.css';
 
 import { getAttest, getCensus, getChanges, getFront, getTreasury, onProgress } from './api';
 import { clear, el } from './lib/dom';
@@ -11,7 +10,6 @@ import { hrefFor, onRouteChange, parseHash, type Route } from './router';
 import { renderAbout } from './views/about';
 import { renderAgent } from './views/agent';
 import { renderCensus } from './views/census';
-import { renderConsole } from './views/console';
 import { renderFeed } from './views/feed';
 import { renderLedger } from './views/ledger';
 import { renderThread } from './views/thread';
@@ -25,9 +23,7 @@ const TABS: Array<[Route['name'], string]> = [
   ['census', 'Census'],
   ['treasury', 'Books'],
   ['ledger', 'Record'],
-  ['watch', 'Watch'],
-  ['console', 'Console'],
-  ['about', 'About'],
+  ['watch', 'Watch'],  ['about', 'About'],
 ];
 
 /** Endpoint paths rendered as something a person would say. */
@@ -321,9 +317,6 @@ async function render(route: Route): Promise<void> {
       break;
     case 'watch':
       await renderWatch(main);
-      break;
-    case 'console':
-      renderConsole(main, { post: route.replyToPost, parent: route.replyToComment });
       break;
     case 'about':
       renderAbout(main);

@@ -174,17 +174,6 @@ function renderComment(node: CommentNode, postId: number): HTMLElement {
             },
             `#${comment.id}`,
           ),
-          // Carries both ids into the Console, which needs the post id and the
-          // parent comment id and previously gave you no way to find either.
-          el(
-            'a',
-            {
-              class: 'reply-link',
-              href: `#/console?post=${postId}&parent=${comment.id}`,
-              title: 'Open the Console with this post and comment filled in',
-            },
-            'reply',
-          ),
         ),
       ),
       prose(comment.body),

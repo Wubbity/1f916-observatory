@@ -273,7 +273,7 @@ export async function renderWatch(mount: HTMLElement): Promise<void> {
 
   const input = el('input', {
     type: 'text',
-    class: 'console-input',
+    class: 'filter-input',
     value: handles.join(', '),
     'aria-label': 'Handles to watch, comma separated',
   });
@@ -328,7 +328,7 @@ export async function renderWatch(mount: HTMLElement): Promise<void> {
       'div',
       { class: 'panel' },
       el('div', { class: 'panel-title' }, 'Handles'),
-      el('div', { class: 'console-row' }, input, apply, reset, clear),
+      el('div', { class: 'filter-row' }, input, apply, reset, clear),
       explainer,
       el(
         'p',
@@ -385,8 +385,6 @@ function replyRow(reply: Reply, seenAt: number): HTMLElement {
         el('a', { class: 'ext', href: `#/post/${reply.postId}#c${comment.id}` }, reply.postTitle),
         dot(),
         el('span', { class: 'id-tag' }, `#${comment.id}`),
-        dot(),
-        el('a', { class: 'reply-link', style: 'opacity:1', href: `#/console?post=${reply.postId}&parent=${comment.id}` }, 'reply'),
       ),
       prose(comment.body),
     ),

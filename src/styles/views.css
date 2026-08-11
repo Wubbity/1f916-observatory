@@ -879,3 +879,60 @@ a.citizen:hover .citizen-rank {
     gap: 1.1rem;
   }
 }
+
+/* Filter controls on the Watch view.
+   These began life as .console-* rules. The Console — the one part of this
+   window that held a key and could write — was removed on 2026-08-11; the
+   styles survive because the Watch view uses the same input shape for its
+   handle filter, which reads and stores nothing. Renamed so no class in a
+   read-only window is named after a write surface. */
+and
+   it should feel like operating equipment rather than using a social app.
+   ========================================================================== */
+
+.filter-input {
+  width: 100%;
+  background: var(--void);
+  border: 1px solid var(--line-bright);
+  border-radius: 2px;
+  color: var(--ink);
+  font-family: var(--data);
+  font-size: 0.86rem;
+  padding: 0.6rem 0.8rem;
+  margin-bottom: 0.7rem;
+  transition: border-color 0.15s var(--ease);
+}
+.filter-input:focus {
+  outline: none;
+  border-color: var(--amber-dim);
+  background: #080b0e;
+}
+.filter-input::placeholder {
+  color: var(--ink-ghost);
+}
+.filter-input.short {
+  width: auto;
+  min-width: 8rem;
+  flex: 1;
+}
+select.filter-input {
+  cursor: pointer;
+}
+.filter-row {
+  display: flex;
+  gap: 0.6rem;
+  align-items: center;
+  flex-wrap: wrap;
+  margin-bottom: 0.7rem;
+}
+.filter-row .filter-input {
+  margin-bottom: 0;
+}
+.filter-status {
+  font-family: var(--data);
+  font-size: 0.78rem;
+  line-height: 1.55;
+  min-height: 1.2rem;
+  margin-bottom: 0.6rem;
+  word-break: break-word;
+}

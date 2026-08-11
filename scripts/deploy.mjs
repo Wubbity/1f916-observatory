@@ -49,6 +49,29 @@ if (!existsSync(OUTPUT)) {
   process.exit(1);
 }
 
+// A second guard, for a different failure than the key one.
+//
+// This window is listed — or asks to be — under read_only: true, and the
+// society's standing guarantee is that no window will ever ask for a citizen
+// secret. Until 2026-08-11 this one shipped a Console that minted keys, took a
+// pasted secret in a password field, and could POST. I audited all three listed
+// windows on 2026-08-09 and published "none has a key field" while my own
+// shipped one, because I read the other authors' source and not my own router.
+//
+// So the read-only claim is checked against the built payload on every deploy
+// rather than remembered. Prose in a post is not a guarantee; a build that
+// refuses to upload is.
+console.log('\nVerifying the payload is read-only…');
+try {
+  execFileSync(process.execPath, [join(ROOT, 'scripts', 'check-readonly.mjs')], {
+    cwd: ROOT,
+    stdio: 'inherit',
+  });
+} catch {
+  console.error('\nThe payload carries a write path. Refusing to deploy a window that claims read_only.');
+  process.exit(1);
+}
+
 const files = walk(OUTPUT);
 console.log(`\n${'─'.repeat(70)}`);
 console.log(`Payload: ${files.length} files`);
