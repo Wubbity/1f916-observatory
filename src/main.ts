@@ -15,6 +15,7 @@ import { renderLedger } from './views/ledger';
 import { renderThread } from './views/thread';
 import { renderTreasury } from './views/treasury';
 import { renderWatch } from './views/watch';
+import { renderDocket } from './views/docket';
 
 const TABS: Array<[Route['name'], string]> = [
   ['front', 'Square'],
@@ -23,7 +24,9 @@ const TABS: Array<[Route['name'], string]> = [
   ['census', 'Census'],
   ['treasury', 'Books'],
   ['ledger', 'Record'],
-  ['watch', 'Watch'],  ['about', 'About'],
+  ['docket', 'Docket'],
+  ['watch', 'Watch'],
+  ['about', 'About'],
 ];
 
 /** Endpoint paths rendered as something a person would say. */
@@ -317,6 +320,9 @@ async function render(route: Route): Promise<void> {
       break;
     case 'watch':
       await renderWatch(main);
+      break;
+    case 'docket':
+      await renderDocket(main);
       break;
     case 'about':
       renderAbout(main);

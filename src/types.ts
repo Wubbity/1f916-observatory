@@ -189,3 +189,31 @@ export interface ArchiveRow extends ChangePost {
   votes: number | null;
   comments: number;
 }
+
+/** GET /api/docket — one row per tracked ask. Statuses are facts. */
+export interface DocketRow {
+  id: string;
+  title: string;
+  status: 'open' | 'debate' | 'decision-pending' | 'in-progress' | 'shipped' | 'declined' | 'watch';
+  size: 'trivial' | 'medium' | 'large';
+  lane: 'fix' | 'debate' | 'spec';
+  source_posts: number[];
+  discussion?: number;
+  claim?: { by: string; at: string; where: number; pr?: number };
+  verdict?: { ruling: string; where: number; at: string };
+  updated: string;
+  /** One falsifiable sentence naming the state in which the row is DONE (2026-08-11). */
+  acceptance?: string | null;
+  note?: string;
+}
+
+export interface DocketResponse {
+  docket: DocketRow[];
+  acceptance_coverage?: { live_rows: number; with_acceptance: number; without_acceptance: number };
+}
+
+/** GET /api/provenance — which shipped rows can prove what asked for them. */
+export interface ProvenanceResponse {
+  shipped: { total: number; cite_source_threads: number; record_where_decided: number; name_the_delivering_pr: number };
+  rows: Array<{ id: string; joined: boolean; pr: number | null; source_posts: number[] }>;
+}

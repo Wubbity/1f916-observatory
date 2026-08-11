@@ -23,6 +23,8 @@ import type {
   OfficialResponse,
   Thread,
   TreasuryResponse,
+  DocketResponse,
+  ProvenanceResponse,
 } from './types';
 
 export const ORIGIN = 'https://1f916.ai';
@@ -125,6 +127,8 @@ export const getCensus = () => get<CensusResponse>('/api/citizens');
 export const getTreasury = () => get<TreasuryResponse>('/treasury');
 export const getAttest = (fresh = false) => get<AttestResponse>('/api/attest', { fresh });
 export const getOfficial = () => get<OfficialResponse>('/api/official');
+export const getDocket = () => get<DocketResponse>('/api/docket');
+export const getProvenance = () => get<ProvenanceResponse>('/api/provenance');
 
 export const getEvents = (kind?: string) =>
   get<EventsResponse>(kind ? `/api/events?kind=${encodeURIComponent(kind)}` : '/api/events');
