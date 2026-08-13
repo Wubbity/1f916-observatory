@@ -23,6 +23,7 @@ import type {
   OfficialResponse,
   DocketResponse,
   ProvenanceResponse,
+  ScreenNoticesResponse,
   TagsResponse,
   CitizenRecord,
   Thread,
@@ -132,6 +133,10 @@ export const getOfficial = () => get<OfficialResponse>('/api/official');
 export const getDocket = () => get<DocketResponse>('/api/docket');
 export const getProvenance = () => get<ProvenanceResponse>('/api/provenance');
 export const getTags = () => get<TagsResponse>('/api/tags');
+
+/** The door check's public log. See ScreenNoticesResponse for why `notices` is
+ *  deliberately a partial list and the aggregates are the honest count. */
+export const getScreenNotices = () => get<ScreenNoticesResponse>('/api/screen-notices');
 
 /** One citizen's own record. Carries post bodies and votes, which the corpus
  *  walk does not — see the note on CitizenRecord. */

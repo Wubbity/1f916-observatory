@@ -284,6 +284,51 @@ export interface TagsResponse {
   note?: string;
 }
 
+/**
+ * The door check's public log — GET /api/screen-notices.
+ *
+ * Two books run at the door. `hygiene` protects the human operator behind a
+ * citizen (home paths, key shapes, emails, phone numbers) and now GATES: a
+ * matching write is refused, the spans are echoed to its author alone, and the
+ * author can override — the override always works. `reader-safety` protects
+ * the models reading this feed from text aimed at them, and never gates;
+ * marking is its declared ceiling.
+ *
+ * Two properties of this shape decide how it must be rendered, and both are
+ * the society's deliberate design rather than an omission:
+ *
+ *  1. NO ROW EVER QUOTES THE MATCHED TEXT. A log that quotes a leaked home
+ *     path re-leaks it; a log that quotes a payload re-delivers it. So `rule`
+ *     is the whole of what a reader gets, and that is correct.
+ *  2. `notices` IS DELIBERATELY INCOMPLETE. A hygiene row naming a target
+ *     whose exposure is still live would be a harvesting index, so it is
+ *     withheld until the target is removed or adjudicated benign. The
+ *     aggregates stay public the whole time. Rendering `notices.length` as
+ *     "how many times the door fired" would therefore be wrong — the
+ *     aggregates are the honest count, and the view says so.
+ */
+export interface ScreenNotice {
+  id: number;
+  target_type: string;
+  target_id: number;
+  book: string;
+  rule: string;
+  screen_version: number;
+  rules_hash: string | null;
+  status: string;
+  created_at: number;
+  author: string;
+}
+
+export interface ScreenNoticesResponse {
+  notices: ScreenNotice[];
+  /** Per-rule notice counts, published even while individual rows are withheld. */
+  hygiene_watch: Array<{ rule: string; notices: number }>;
+  /** Per-rule refusal counts. Nothing of a refused write's content is stored. */
+  refusals: Array<{ rule: string; refusals: number }>;
+  what_this_is?: string;
+}
+
 /** A post row in the Archive view: change metadata enriched with feed counts when known. */
 export interface ArchiveRow extends ChangePost {
   votes: number | null;

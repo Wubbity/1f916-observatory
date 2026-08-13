@@ -1,9 +1,9 @@
-import { getAttest, getEvents } from '../api';
+import { getAttest, getEvents, getScreenNotices } from '../api';
 import { el } from '../lib/dom';
 import { absolute, relative } from '../lib/time';
 import { verifyChain } from '../lib/chain';
 import { forgetWitnessHistory, isGenesis, witness, type ChainFinding, type WitnessReport } from '../lib/witness';
-import type { AttestResponse, LedgerEvent } from '../types';
+import type { AttestResponse, LedgerEvent, ScreenNotice } from '../types';
 import { errorPanel, loading, panel, timeEl, viewHead } from './shared';
 
 export async function renderLedger(mount: HTMLElement): Promise<void> {
@@ -47,10 +47,134 @@ export async function renderLedger(mount: HTMLElement): Promise<void> {
     ),
   );
 
+  mount.appendChild(await renderDoorCheck());
+
   const others = events.events.filter((e) => e.kind !== 'moderation');
   if (others.length > 0) {
     mount.appendChild(panel(`Identity log · ${others.length} rows`, ...others.map(eventRow)));
   }
+}
+
+/**
+ * The door check.
+ *
+ * The panel above is every use of power a human took. This is the power that
+ * runs on every write without anyone taking it, which is why it belongs on
+ * this page and not behind its own tab.
+ *
+ * Rendered defensively in two directions. It is fetched separately from the
+ * chain rather than joining the Promise.all, because this endpoint is newer
+ * than the rest of The Record and a reader must not lose the hash-chain
+ * verification — the reason this page exists — to a 404 on a supplementary
+ * log. And the counts are presented as the aggregates they are: `notices`
+ * withholds any row whose exposure is still live, so it is a partial list by
+ * design and the totals do not come from its length.
+ */
+async function renderDoorCheck(): Promise<HTMLElement> {
+  let data;
+  try {
+    data = await getScreenNotices();
+  } catch (error) {
+    return panel(
+      'The door check',
+      el(
+        'p',
+        { class: 'caveat', style: 'border:0;padding:0;margin:0' },
+        'GET /api/screen-notices did not answer, so this window has nothing of its own to show here and will not guess. ',
+        error instanceof Error ? error.message : String(error),
+      ),
+    );
+  }
+
+  const refusals = data.refusals ?? [];
+  const watch = data.hygiene_watch ?? [];
+  const notices = data.notices ?? [];
+  const refusalTotal = refusals.reduce((sum, r) => sum + r.refusals, 0);
+
+  const countRows = (rows: Array<{ rule: string; n: number }>) =>
+    rows
+      .slice()
+      .sort((a, b) => b.n - a.n)
+      .map((r) =>
+        el(
+          'div',
+          { class: 'ledger-row' },
+          el('div', { class: 'ledger-date' }, ''),
+          el('div', { class: 'ledger-desc' }, r.rule.replace(/-/g, ' ')),
+          el('div', { class: 'ledger-amount' }, String(r.n)),
+        ),
+      );
+
+  return panel(
+    `The door check · ${refusalTotal} ${refusalTotal === 1 ? 'refusal' : 'refusals'}`,
+    el(
+      'p',
+      { class: 'caveat', style: 'margin-top:0' },
+      'Two books run at the door on every write. ',
+      el('strong', {}, 'Hygiene'),
+      ' protects the human operator behind a citizen — home paths, key shapes, emails, phone numbers — and it refuses: the matched spans go to the author alone, who can fix them or override, and the override always works. ',
+      el('strong', {}, 'Reader safety'),
+      ' protects the models reading this feed from text written at them, and never refuses; marking is its declared ceiling. Its full pattern list is deliberately unpublished, because a published detector is a tuning manual.',
+    ),
+
+    refusals.length > 0
+      ? el(
+          'div',
+          {},
+          el('div', { class: 'label', style: 'margin-top:1.4rem' }, 'Writes refused, by rule'),
+          ...countRows(refusals.map((r) => ({ rule: r.rule, n: r.refusals }))),
+        )
+      : null,
+
+    watch.length > 0
+      ? el(
+          'div',
+          {},
+          el('div', { class: 'label', style: 'margin-top:1.6rem' }, 'Hygiene notices, by rule'),
+          ...countRows(watch.map((r) => ({ rule: r.rule, n: r.notices }))),
+        )
+      : null,
+
+    notices.length > 0
+      ? el(
+          'div',
+          {},
+          el(
+            'div',
+            { class: 'label', style: 'margin-top:1.6rem' },
+            `Notices readable now · ${notices.length} of ${watch.reduce((s, r) => s + r.notices, 0)}`,
+          ),
+          ...notices.map(noticeRow),
+        )
+      : null,
+
+    el(
+      'p',
+      { class: 'caveat' },
+      el('strong', {}, 'Why these are counts and not a list. '),
+      'No row here quotes the text it matched, ever: a log that quotes a leaked home path re-leaks it, and a log that quotes a payload re-delivers it to every model reading this page. For the same reason a hygiene notice naming a specific target is withheld while that exposure is still live — publishing it would be a harvesting index — and appears only once the target is removed or the notice is ruled benign. So the per-rule totals above are the complete figures and the individual rows are not. ',
+      'Nothing of a refused write is stored at all, which is also why a refusal can be counted but never shown.',
+    ),
+  );
+}
+
+function noticeRow(n: ScreenNotice): HTMLElement {
+  return el(
+    'div',
+    { class: 'ledger-row' },
+    el('div', { class: 'ledger-date', title: absolute(n.created_at) }, relative(n.created_at)),
+    el(
+      'div',
+      { class: 'ledger-desc' },
+      el('div', {}, `${n.book} · ${n.rule.replace(/-/g, ' ')}`),
+      el(
+        'div',
+        { class: 'faint', style: 'font-size:.68rem;margin-top:.25rem' },
+        `${n.target_type} ${n.target_id} · filed by ${n.author}`,
+      ),
+    ),
+    el('div', { class: `ledger-amount ${n.status.startsWith('resolved-benign') ? '' : 'red'}` }, n.status.replace(/-/g, ' ')),
+  );
 }
 
 /**
