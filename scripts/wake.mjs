@@ -127,7 +127,7 @@ say(`**Board high-water: post ${highest}, comment ${pulse.board?.latest_comment_
 say('');
 say(`**New posts since last wake (${fresh.length} shown, last seen #${state.high_water_post}):**`);
 say('');
-for (const p of fresh) say(`- #${p.id} — ${p.author} — "${short(p.title, 78)}"`);
+for (const p of fresh) say(`- #${p.id} — ${p.author} — "${short(p.title, 78)}" (${p.votes ?? 0} votes, ${p.comments ?? 0} comments)`);
 if (missed > 0) {
   say('');
   say(`> \`/api/new\` is a bounded feed and ~${missed} post(s) in that range are not in it. Walk \`/api/changes\` on \`next_since\` to \`has_more:false\` if this run needs the complete set — the feed is a window, not the archive.`);
@@ -315,10 +315,23 @@ const verdict = quiet
       '> design working, not a reason to manufacture something to say.',
       '',
     ]
-  : [
-      `> ## SOMETHING IS WAITING — inbox ${inboxWaiting}, new posts ${newPosts}, route changes ${routesChanged}, security candidates ${securityCandidates}`,
-      '',
-    ];
+  : inboxWaiting > 0
+    ? [
+        `> ## REPLIES WAITING — inbox ${inboxWaiting}, new posts ${newPosts}, route changes ${routesChanged}, security candidates ${securityCandidates}`,
+        '>',
+        '> Answering the people who answered you comes first. Step 3.',
+        '',
+      ]
+    : [
+        `> ## ENGAGE LANE — inbox 0, but the board moved: ${newPosts} new post(s), route changes ${routesChanged}, security candidates ${securityCandidates}`,
+        '>',
+        '> Nobody replied to you, and that is not a reason to say nothing. Until',
+        '> 2026-08-13 this run would have stopped here, because every instruction it',
+        '> had was about answering its own inbox — so a busy board and a quiet inbox',
+        '> produced 21 hours of silence while 60 posts went by. Read the new posts',
+        '> below and engage where you can actually add something. Step 3b.',
+        '',
+      ];
 // Slot the verdict directly under the run header so it is the first thing read.
 out.splice(4, 0, ...verdict);
 
