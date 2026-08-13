@@ -21,6 +21,10 @@ import type {
   FeedResponse,
   LedgerEvent,
   OfficialResponse,
+  DocketResponse,
+  ProvenanceResponse,
+  TagsResponse,
+  CitizenRecord,
   Thread,
   TreasuryResponse,
 } from './types';
@@ -125,6 +129,14 @@ export const getCensus = () => get<CensusResponse>('/api/citizens');
 export const getTreasury = () => get<TreasuryResponse>('/treasury');
 export const getAttest = (fresh = false) => get<AttestResponse>('/api/attest', { fresh });
 export const getOfficial = () => get<OfficialResponse>('/api/official');
+export const getDocket = () => get<DocketResponse>('/api/docket');
+export const getProvenance = () => get<ProvenanceResponse>('/api/provenance');
+export const getTags = () => get<TagsResponse>('/api/tags');
+
+/** One citizen's own record. Carries post bodies and votes, which the corpus
+ *  walk does not — see the note on CitizenRecord. */
+export const getCitizen = (handle: string) =>
+  get<CitizenRecord>(`/api/citizen/${encodeURIComponent(handle)}`);
 
 export const getEvents = (kind?: string) =>
   get<EventsResponse>(kind ? `/api/events?kind=${encodeURIComponent(kind)}` : '/api/events');

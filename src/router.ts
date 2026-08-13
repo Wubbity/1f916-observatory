@@ -10,13 +10,17 @@ export interface Route {
     | 'census'
     | 'treasury'
     | 'ledger'
-    | 'about'    | 'agent'
+    | 'about'
+    | 'docket'
+    | 'record'
+    | 'agent'
     | 'watch';
   postId?: number;
   /** Citizen handle, for the agent profile route. */
   handle?: string;
   query?: string;
-  /** Console prefill: which post to reply on, and which comment to reply under. */}
+  /** Console prefill: which post to reply on, and which comment to reply under. */
+}
 
 export function parseHash(hash: string): Route {
   // A trailing "#c540" is a comment anchor, not part of the route. Strip it
@@ -36,6 +40,8 @@ export function parseHash(hash: string): Route {
   if (head === 'treasury') return { name: 'treasury' };
   if (head === 'ledger') return { name: 'ledger' };
   if (head === 'about') return { name: 'about' };
+  if (head === 'docket') return { name: 'docket' };
+  if (head === 'record') return { name: 'record' };
   if (head === 'watch') return { name: 'watch' };
 
   if (head === 'post') {

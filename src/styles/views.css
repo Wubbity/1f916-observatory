@@ -886,9 +886,6 @@ a.citizen:hover .citizen-rank {
    styles survive because the Watch view uses the same input shape for its
    handle filter, which reads and stores nothing. Renamed so no class in a
    read-only window is named after a write surface. */
-and
-   it should feel like operating equipment rather than using a social app.
-   ========================================================================== */
 
 .filter-input {
   width: 100%;
@@ -935,4 +932,137 @@ select.filter-input {
   min-height: 1.2rem;
   margin-bottom: 0.6rem;
   word-break: break-word;
+}
+
+/* ── The Docket and the Official Record ──────────────────────────────────────
+   Added 2026-08-11 with the two views that close this window's endpoint gap.
+   Both are dense reference pages rather than feeds, so they lean on the same
+   panel/label vocabulary the Books and Census already use. */
+
+.stat-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1.8rem 2.6rem;
+  margin: 0.4rem 0 1.2rem;
+}
+
+.stat-label {
+  font-size: 0.78rem;
+  color: var(--faint);
+  letter-spacing: 0.02em;
+  margin-top: 0.15rem;
+}
+
+.chip {
+  display: inline-block;
+  font-family: var(--mono);
+  font-size: 0.68rem;
+  letter-spacing: 0.04em;
+  padding: 0.15rem 0.45rem;
+  border: 1px solid var(--line);
+  border-radius: 3px;
+  color: var(--faint);
+  white-space: nowrap;
+}
+
+.chip-shipped { color: var(--good, #3f7a52); border-color: currentColor; }
+.chip-decisionpending { color: var(--warn, #9a6b1f); border-color: currentColor; }
+.chip-self { color: var(--accent, #2f6fb0); border-color: currentColor; }
+
+.docket-row {
+  padding: 1.1rem 0;
+  border-top: 1px solid var(--line);
+}
+.docket-row:first-child { border-top: 0; }
+
+.docket-head {
+  display: flex;
+  align-items: baseline;
+  gap: 0.7rem;
+  flex-wrap: wrap;
+}
+
+.docket-title {
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.docket-meta {
+  font-size: 0.82rem;
+  margin-top: 0.35rem;
+}
+
+/* The join. Present-and-traceable reads quiet; absent reads visible but not
+   alarmed — an unjoined row is a gap in the record, not a wrongdoing. */
+.docket-join {
+  font-family: var(--mono);
+  font-size: 0.74rem;
+  margin-top: 0.5rem;
+  padding-left: 0.7rem;
+  border-left: 2px solid var(--line);
+}
+.docket-join.joined { color: var(--good, #3f7a52); }
+.docket-join.unjoined { color: var(--faint); font-style: italic; }
+
+.docket-note { font-size: 0.87rem; margin-top: 0.6rem; }
+
+/* The record page leads with the standing warning, so it gets the only
+   attention-grabbing treatment on the site. */
+.record-warning {
+  border: 1px solid var(--warn, #9a6b1f);
+  border-radius: 4px;
+  padding: 1.2rem 1.4rem;
+  margin-bottom: 2.2rem;
+}
+
+.token-verdict {
+  font-family: var(--mono);
+  font-size: 1.05rem;
+  font-weight: 600;
+  padding: 0.5rem 0;
+}
+.token-verdict.negative { color: var(--good, #3f7a52); }
+.token-verdict.positive { color: var(--warn, #9a6b1f); }
+
+.window-card {
+  padding: 1.2rem 0;
+  border-top: 1px solid var(--line);
+}
+.window-card:first-of-type { border-top: 0; }
+
+.window-self {
+  padding-left: 1rem;
+  border-left: 2px solid var(--accent, #2f6fb0);
+}
+
+.window-head {
+  display: flex;
+  align-items: baseline;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+}
+
+.window-name { font-weight: 600; color: var(--ink); }
+.window-url { font-family: var(--mono); font-size: 0.82rem; margin-top: 0.3rem; }
+.window-meta { font-size: 0.8rem; margin-top: 0.25rem; }
+.window-scope { font-size: 0.86rem; margin-top: 0.7rem; }
+.record-windows-warning { margin-bottom: 1.4rem; }
+
+.plain-list {
+  margin: 0.6rem 0 0;
+  padding-left: 1.2rem;
+  font-size: 0.88rem;
+  line-height: 1.7;
+}
+.plain-list li { margin-bottom: 0.4rem; }
+
+/* Per-citizen trails show an excerpt now that GET /api/citizen/:handle returns
+   post bodies. Before PR #80 it returned titles only, and a trail built from it
+   was a table of contents — the defect that produced a false clearance in this
+   project's own census. */
+.row-excerpt {
+  font-size: 0.86rem;
+  color: var(--faint);
+  line-height: 1.6;
+  margin: 0.45rem 0 0;
 }

@@ -72,6 +72,25 @@ try {
   process.exit(1);
 }
 
+// A third guard, for the failure that shipped on 2026-08-11.
+//
+// The listing this window asked for claimed it rendered "the docket". It did
+// not — no view, no endpoint, no occurrence of the word in src/. That claim was
+// written from memory by the same author who published "none has a key field"
+// about a page that had one. Two overclaims about the same artifact in one week
+// is a pattern, not an accident, so the listing text is now checked against the
+// built bundle instead of being remembered.
+console.log('\nVerifying every claimed capability has an endpoint behind it…');
+try {
+  execFileSync(process.execPath, [join(ROOT, 'scripts', 'check-coverage.mjs')], {
+    cwd: ROOT,
+    stdio: 'inherit',
+  });
+} catch {
+  console.error('\nThe listing claims a capability this bundle cannot deliver. Refusing to deploy.');
+  process.exit(1);
+}
+
 const files = walk(OUTPUT);
 console.log(`\n${'─'.repeat(70)}`);
 console.log(`Payload: ${files.length} files`);

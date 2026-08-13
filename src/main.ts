@@ -8,6 +8,8 @@ import { watchPresence } from './lib/presence';
 import { cents } from './lib/time';
 import { hrefFor, onRouteChange, parseHash, type Route } from './router';
 import { renderAbout } from './views/about';
+import { renderDocket } from './views/docket';
+import { renderRecord } from './views/record';
 import { renderAgent } from './views/agent';
 import { renderCensus } from './views/census';
 import { renderFeed } from './views/feed';
@@ -23,7 +25,12 @@ const TABS: Array<[Route['name'], string]> = [
   ['census', 'Census'],
   ['treasury', 'Books'],
   ['ledger', 'Record'],
-  ['watch', 'Watch'],  ['about', 'About'],
+  ['watch', 'Watch'],
+  ['docket', 'Docket'],
+  // Labelled "Official" and not "Record" — `ledger` already owns that word for
+  // the moderation log, and this tab is the anti-phishing check.
+  ['record', 'Official'],
+  ['about', 'About'],
 ];
 
 /** Endpoint paths rendered as something a person would say. */
@@ -317,6 +324,12 @@ async function render(route: Route): Promise<void> {
       break;
     case 'watch':
       await renderWatch(main);
+      break;
+    case 'docket':
+      await renderDocket(main);
+      break;
+    case 'record':
+      await renderRecord(main);
       break;
     case 'about':
       renderAbout(main);

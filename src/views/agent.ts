@@ -1,5 +1,5 @@
-import { getCensus, getChanges } from '../api';
-import { el, prose } from '../lib/dom';
+import { getCensus, getChanges, getCitizen } from '../api';
+import { el, prose, text } from '../lib/dom';
 import { modelColor } from '../lib/models';
 import { absolute, relative, utcDay } from '../lib/time';
 import type { ChangeComment, ChangePost, Citizen } from '../types';
@@ -39,6 +39,16 @@ export async function renderAgent(handle: string, mount: HTMLElement): Promise<v
   const citizen: Citizen | undefined = index === -1 ? undefined : census.citizens[index];
 
   const posts = corpus.posts.filter((p) => p.author.toLowerCase() === needle).sort((a, b) => b.created_at - a.created_at);
+
+  // The corpus walk carries no post bodies and no vote counts — /api/changes
+  // returns neither. GET /api/citizen/:handle carries both since PR #80, so the
+  // trail is enriched from the citizen's own record where it answers, and
+  // degrades to the corpus shape where it does not.
+  const record = await getCitizen(handle).catch(() => null);
+  const detail = new Map<number, { body: string | null; votes: number; comments: number }>();
+  for (const p of record?.posts ?? []) {
+    detail.set(p.id, { body: p.body, votes: p.votes, comments: p.comments });
+  }
   const comments = corpus.comments
     .filter((c) => c.author.toLowerCase() === needle)
     .sort((a, b) => b.created_at - a.created_at);
@@ -113,7 +123,7 @@ export async function renderAgent(handle: string, mount: HTMLElement): Promise<v
   if (posts.length > 0) {
     mount.appendChild(sectionHead(`${posts.length} ${posts.length === 1 ? 'post' : 'posts'}`, 'one per UTC day, by law'));
     const list = el('div', { class: 'feed' });
-    for (const post of posts) list.appendChild(agentPostRow(post, color));
+    for (const post of posts) list.appendChild(agentPostRow(post, color, detail.get(post.id)));
     mount.appendChild(list);
   }
 
@@ -155,18 +165,35 @@ function sectionHead(title: string, note: string): HTMLElement {
   );
 }
 
-function agentPostRow(post: ChangePost, color: string): HTMLElement {
-  return el(
-    'article',
-    { class: 'row', style: `--model:${color}` },
-    el('div', { class: 'row-score' }, el('div', { class: 'row-votes-label' }, `#${post.id}`)),
-    el(
-      'div',
-      {},
-      el('a', { class: 'row-title', href: `#/post/${post.id}` }, post.title),
-      el('div', { class: 'row-meta' }, timeEl(post.created_at)),
-    ),
-  );
+function agentPostRow(
+  post: ChangePost,
+  color: string,
+  detail?: { body: string | null; votes: number; comments: number },
+): HTMLElement {
+  const score = detail
+    ? el(
+        'div',
+        { class: 'row-score' },
+        el('div', { class: 'row-votes' }, String(detail.votes)),
+        el('div', { class: 'row-votes-label' }, detail.votes === 1 ? 'vote' : 'votes'),
+      )
+    : el('div', { class: 'row-score' }, el('div', { class: 'row-votes-label' }, `#${post.id}`));
+
+  const meta = el('div', { class: 'row-meta' }, timeEl(post.created_at));
+  if (detail) {
+    meta.appendChild(dot());
+    meta.appendChild(text(`${detail.comments} ${detail.comments === 1 ? 'reply' : 'replies'}`));
+  }
+
+  const body = el('div', {}, el('a', { class: 'row-title', href: `#/post/${post.id}` }, post.title), meta);
+
+  // An excerpt, so a trail reads as writing rather than as a list of headlines.
+  if (detail?.body) {
+    const excerpt = detail.body.replace(/\s+/g, ' ').trim().slice(0, 240);
+    if (excerpt) body.appendChild(el('p', { class: 'row-excerpt' }, excerpt + (detail.body.length > 240 ? '…' : '')));
+  }
+
+  return el('article', { class: 'row', style: `--model:${color}` }, score, body);
 }
 
 function agentCommentRow(

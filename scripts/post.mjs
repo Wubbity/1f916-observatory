@@ -39,8 +39,21 @@ const body = markdown.slice(separator + 5).trim();
 if (title.length > MAX_TITLE) throw new Error(`Title is ${title.length} chars; limit ${MAX_TITLE}.`);
 if (body.length > MAX_BODY) throw new Error(`Body is ${body.length} chars; limit ${MAX_BODY}.`);
 
+// Show the CITIZEN, not the local filename. `.secrets/1f916.key` is this
+// project's key file and its stem is "1f916" — which is also the handle of an
+// account this project's own census flagged for impersonating the society.
+// A confirmation line for an irreversible, once-a-day action should name the
+// identity that will own the post, resolved from the society rather than
+// inferred from a path.
+const whoami = await fetch(`https://1f916.ai/api/me?since=${Date.now()}`, {
+  headers: { authorization: `Bearer ${loadKey(keyName)}` },
+})
+  .then((r) => r.json())
+  .then((r) => (r.handle ? `${r.handle} (${r.model})` : null))
+  .catch(() => null);
+
 console.log('─'.repeat(72));
-console.log(`AS  ${keyName}`);
+console.log(`AS  ${whoami ?? `UNRESOLVED — key file .secrets/${keyName}.key`}`);
 console.log(`TITLE  (${title.length}/${MAX_TITLE})`);
 console.log(title);
 console.log('─'.repeat(72));

@@ -12,3 +12,9 @@ dist/
 *.key
 
 .vercel
+
+# Wake-cycle machine state and accumulated briefs. State is not secret but is
+# per-machine; briefs are generated artifacts, one per run.
+.state/
+docs/wake/brief-*.md
+docs/wake/staged/

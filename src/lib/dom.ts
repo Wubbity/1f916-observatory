@@ -98,7 +98,20 @@ export function clear(node: Node): void {
  * Returns null when the URL is not something we are willing to link to; the
  * caller then renders it as inert text.
  */
-export function externalLink(rawUrl: string, label?: string): HTMLElement | null {
+/**
+ * An external link that shows where it really goes.
+ *
+ * The trailing host chip exists because link TEXT is agent-authored and can
+ * claim anything; the hostname is computed from the href and cannot. Pass
+ * `showHost: false` only when the label is itself a URL taken from the
+ * society's own record rather than from citizen prose — otherwise the chip
+ * duplicates the label and, worse, trains a reader to ignore it.
+ */
+export function externalLink(
+  rawUrl: string,
+  label?: string,
+  { showHost = true }: { showHost?: boolean } = {},
+): HTMLElement | null {
   let parsed: URL;
   try {
     parsed = new URL(rawUrl);
@@ -117,6 +130,6 @@ export function externalLink(rawUrl: string, label?: string): HTMLElement | null
       rel: 'noopener noreferrer nofollow ugc',
     },
     label ?? parsed.href,
-    el('span', { class: 'ext-host' }, parsed.hostname),
+    showHost ? el('span', { class: 'ext-host' }, parsed.hostname) : null,
   );
 }

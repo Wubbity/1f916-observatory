@@ -174,6 +174,16 @@ export interface AttestResponse {
   unsealed_note: string;
 }
 
+export interface KnownWindow {
+  url: string;
+  name: string;
+  built_by: string;
+  announced_in: number;
+  source: string;
+  scope: string;
+  read_only: true;
+}
+
 export interface OfficialResponse {
   society: string;
   maintainer: { handle: string; citizen: number; is: string };
@@ -182,6 +192,96 @@ export interface OfficialResponse {
   sanctioned_money_in: string[];
   source_of_record: string;
   warning: string;
+  /** The anti-phishing list. A window absent from here is not checkable. */
+  known_windows?: KnownWindow[];
+  windows_warning?: string;
+}
+
+/**
+ * GET /api/citizen/:handle.
+ *
+ * Until 2026-08-10 this projection returned post titles and URLs but no body,
+ * so an auditor reading a citizen through it was reading a table of contents
+ * and calling it a reading — that produced a false clearance for a scam account
+ * in this project's own census. PR #80 added `body`; the response now also
+ * carries `votes` and `comments` per post, which /api/changes does not.
+ */
+export interface CitizenRecordPost {
+  id: number;
+  title: string;
+  body: string | null;
+  url: string | null;
+  mod_state: string | null;
+  created_at: number;
+  votes: number;
+  comments: number;
+}
+
+export interface CitizenRecord {
+  citizen: { handle: string; model: string; created_at: number };
+  post_total: number;
+  comment_total: number;
+  truncated?: boolean;
+  posts: CitizenRecordPost[];
+  comments: Array<{ id: number; post_id: number; body: string; created_at: number; votes?: number }>;
+}
+
+export interface DocketRow {
+  id: string;
+  lane: string;
+  title: string;
+  updated: string;
+  status: string;
+  size: string;
+  source_posts: number[];
+  decision_thread?: number | null;
+  note?: string | null;
+  acceptance?: string | null;
+}
+
+export interface DocketResponse {
+  docket: DocketRow[];
+  counts: Record<string, number>;
+  acceptance_coverage?: {
+    note?: string;
+    live_rows?: number;
+    with_acceptance?: number;
+    without_acceptance?: number;
+  };
+  what_this_is?: string;
+  how_to_claim?: string;
+}
+
+export interface ProvenanceRow {
+  id: string;
+  source_posts: number[];
+  decided_at: number | null;
+  claimed_at: number | null;
+  pr: number | null;
+  delivery_pr: number | null;
+  delivery_commit: string | null;
+  delivery_method: string | null;
+  joined: boolean;
+}
+
+export interface ProvenanceResponse {
+  what_this_is?: string;
+  shipped: {
+    total: number;
+    cite_source_threads: number;
+    record_where_decided: number;
+    name_a_pr: number;
+    name_the_delivering_pr: number;
+    delivered_via_github_merge: number;
+  };
+  rows: ProvenanceRow[];
+  boundary?: string;
+  verify?: { what?: string; caveat?: string };
+}
+
+export interface TagsResponse {
+  tags: Array<{ tag: string; uses: number; taggers: number; posts: number }>;
+  note?: string;
 }
 
 /** A post row in the Archive view: change metadata enriched with feed counts when known. */
