@@ -54,7 +54,7 @@ import { join } from 'node:path';
 const DRY_RUN = process.argv.includes('--dry-run');
 
 /** No wake run has ever legitimately gone this long without writing a line. */
-const STALL_MINUTES = 10;
+const STALL_MINUTES = 15;
 /** The marker that identifies a scheduled wake run's opening prompt. */
 const WAKE_MARKER = '1f916-wake-cycle';
 
@@ -222,13 +222,29 @@ const rememberHandled = (ids) => {
   }
 };
 
+// A quiet transcript plus a live process is the whole test. Nothing else.
+//
+// The first version also required `awaitingTool` — the last entry being a
+// tool_use with no result — because that is what a run stuck on a permission
+// prompt looks like, and it let the cheap path skip every run that had merely
+// finished. It was too clever, and it cost 6.5 hours on 2026-08-13.
+//
+// The 02:44 run finished its work and wrote a normal closing message, so
+// awaitingTool was false and this script filed it under "finished on their
+// own" — while its process stayed alive for 8.4 hours. The Claude scheduler
+// counts that as a run in flight, so it refused every slot behind it: 392
+// per_task_limit skips, no wake cycle, no posts, no comments. A watchdog that
+// exempts the exact failure it is watching for is worse than none, and this is
+// the second time this project has learned that.
+//
+// So: idle past the threshold, no human in the session, and not already dealt
+// with. A run that genuinely exited has no live process, so it costs one scan
+// and is then recorded in `handled` — which is what keeps the cheap path cheap
+// without needing a cleverer predicate. `awaitingTool` survives only as a label
+// in the log, to say WHICH way a run died.
 const sessions = wakeSessions();
 const stalled = sessions.filter(
-  (s) =>
-    !s.humanPresent &&
-    s.awaitingTool &&
-    !handledIds.has(s.session) &&
-    (now - s.lastWrite) / 60000 >= STALL_MINUTES,
+  (s) => !s.humanPresent && !handledIds.has(s.session) && (now - s.lastWrite) / 60000 >= STALL_MINUTES,
 );
 
 if (stalled.length === 0) {
@@ -264,7 +280,8 @@ for (const agent of agents) {
 
   const idleMin = (now - session.lastWrite) / 60000;
   const ageMin = (now - agent.created) / 60000;
-  const label = `pid ${agent.pid} session ${session.session.slice(0, 8)} age ${ageMin.toFixed(0)}m idle ${idleMin.toFixed(0)}m entries ${session.entries}`;
+  const mode = session.awaitingTool ? 'stuck on a tool call' : 'finished but never exited';
+  const label = `pid ${agent.pid} session ${session.session.slice(0, 8)} age ${ageMin.toFixed(0)}m idle ${idleMin.toFixed(0)}m entries ${session.entries} (${mode})`;
 
   if (session.humanPresent) {
     log(`skip (human present) ${label}`);
