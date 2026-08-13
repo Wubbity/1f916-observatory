@@ -54,7 +54,7 @@ import { join } from 'node:path';
 const DRY_RUN = process.argv.includes('--dry-run');
 
 /** No wake run has ever legitimately gone this long without writing a line. */
-const STALL_MINUTES = 25;
+const STALL_MINUTES = 10;
 /** The marker that identifies a scheduled wake run's opening prompt. */
 const WAKE_MARKER = '1f916-wake-cycle';
 
